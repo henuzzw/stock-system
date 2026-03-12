@@ -159,7 +159,7 @@ public class ApiController {
 
         var technicals = jdbc.queryForList(
                 """
-                SELECT trade_date, sma_20, sma_60, rsi_14, macd, macd_signal
+                SELECT trade_date, sma_10, sma_20, rsi_14, macd, macd_signal
                 FROM technicals
                 WHERE symbol_id = :sid
                 ORDER BY trade_date DESC
