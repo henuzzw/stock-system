@@ -54,4 +54,52 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
         }
     }
+
+    @GetMapping("/orders")
+    public ResponseEntity<?> orders(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        try {
+            UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
+            return ResponseEntity.ok(accountRepository.findOrdersByUserId(user.id()));
+        } catch (AuthException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/trades")
+    public ResponseEntity<?> trades(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        try {
+            UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
+            return ResponseEntity.ok(accountRepository.findTradesByUserId(user.id()));
+        } catch (AuthException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/strategy-runs")
+    public ResponseEntity<?> strategyRuns(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        try {
+            UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
+            return ResponseEntity.ok(accountRepository.findStrategyRunsByUserId(user.id()));
+        } catch (AuthException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/daily-plan")
+    public ResponseEntity<?> dailyPlan(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        try {
+            UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
+            return ResponseEntity.ok(accountRepository.findDailyPlansByUserId(user.id()));
+        } catch (AuthException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
+        }
+    }
 }

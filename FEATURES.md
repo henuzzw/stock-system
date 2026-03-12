@@ -34,12 +34,12 @@
 - D2 JWT login/auth (multi-user concurrent) ✅
 - D3 Account per user (initial cash 10,000,000) ✅
 - D4 Positions (partial buys/sells, cost basis, PnL) ✅
-- D5 Orders (market/limit; state machine) ❌
-- D6 Trades (fills; link to orders; audit) ❌
+- D5 Orders (market/limit; state machine) 🟡 schema + query API skeleton landed
+- D6 Trades (fills; link to orders; audit) 🟡 schema + query API skeleton landed
 - D7 Matching engine uses minute bars (10:10/14:50) ❌
 - D8 Fees model (optional) ❌
 - D9 Equity/PnL curve stats ❌
-- D10 Strategy run logs + daily plans (Top3 automation) ❌
+- D10 Strategy run logs + daily plans (Top3 automation) 🟡 schema + query API skeleton landed
 
 ## E. Web UI (port 30000)
 - E1 Dashboard (technical/valuation/candidates) ✅
