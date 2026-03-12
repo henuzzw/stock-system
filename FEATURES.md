@@ -22,7 +22,7 @@
 
 ## C. Strategy rules (agreed)
 - C1 Universe: left top3 + right top3 (independent), dedupe; if <6, extend ranks but only within `trend_ok=1` 🟡
-- C2 Buy price: 10:10 minute price 🟡
+- C2 Buy price: prefer 10:10 minute price, fallback to nearest minute in 10:08-10:12 🟡
 - C3 Daily budget: 100,000 total 🟡
 - C4 Allocation: weight by `total_score` (higher => more buy) 🟡
 - C5 If `trend_ok` insufficient: hold cash (do not force 6) 🟡
@@ -36,7 +36,7 @@
 - D4 Positions (partial buys/sells, cost basis, PnL) ✅
 - D5 Orders (market/limit; state machine) 🟡 schema + query API skeleton landed
 - D6 Trades (fills; link to orders; audit) 🟡 schema + query API skeleton landed
-- D7 Matching engine uses minute bars (10:10/14:50) ❌
+- D7 Matching engine uses minute bars (buy side: nearest 10:10 window, sell side pending) 🟡
 - D8 Fees model (optional) ❌
 - D9 Equity/PnL curve stats ❌
 - D10 Strategy run logs + daily plans (Top3 automation) 🟡 schema + query API skeleton landed

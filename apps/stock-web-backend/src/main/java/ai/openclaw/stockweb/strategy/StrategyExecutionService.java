@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +20,7 @@ public class StrategyExecutionService {
     private static final BigDecimal EXECUTION_BUDGET = new BigDecimal("100000.00");
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter MINUTE_TS_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final StrategyExecutionRepository repository;
 
@@ -82,16 +85,18 @@ public class StrategyExecutionService {
                 continue;
             }
 
-            BigDecimal minutePrice = repository.findMinuteClosePrice(candidate.symbolId(), runDate, 10, 10).orElse(null);
-            if (minutePrice == null || minutePrice.compareTo(BigDecimal.ZERO) <= 0) {
-                repository.updateDailyPlanStatus(planId, "SKIPPED", "Missing minute price at 10:10");
+            MinutePriceMatch minuteMatch = repository.findNearestMinuteClosePrice(candidate.symbolId(), runDate, 10, 10, 2, 2).orElse(null);
+            if (minuteMatch == null || minuteMatch.closePrice() == null || minuteMatch.closePrice().compareTo(BigDecimal.ZERO) <= 0) {
+                repository.updateDailyPlanStatus(planId, "SKIPPED", "Missing minute price near 10:10 (window 10:08-10:12)");
                 skippedCount++;
                 continue;
             }
 
+            BigDecimal minutePrice = minuteMatch.closePrice();
+            String matchedTime = formatMinuteTimestamp(minuteMatch.matchedAt());
             BigDecimal quantity = targetAmount.divide(minutePrice, 4, RoundingMode.DOWN);
             if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-                repository.updateDailyPlanStatus(planId, "SKIPPED", "Quantity rounded to zero at 10:10 price");
+                repository.updateDailyPlanStatus(planId, "SKIPPED", "Quantity rounded to zero at matched minute price " + matchedTime);
                 skippedCount++;
                 continue;
             }
@@ -107,7 +112,7 @@ public class StrategyExecutionService {
                     quantity,
                     minutePrice,
                     "strategy-exec",
-                    "strategyRunId=" + strategyRunId + ",planId=" + planId
+                    "strategyRunId=" + strategyRunId + ",planId=" + planId + ",matchedMinute=" + matchedTime
             );
             repository.createTrade(
                     orderId,
@@ -118,11 +123,11 @@ public class StrategyExecutionService {
                     minutePrice,
                     amount,
                     BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP),
-                    runDate.atTime(10, 10).atZone(MARKET_ZONE).toInstant()
+                    minuteMatch.matchedAt().atZone(MARKET_ZONE).toInstant()
             );
             repository.updateAccountCashBalance(userId, amount.negate());
             repository.upsertPosition(userId, candidate.symbolId(), "BUY", quantity, minutePrice);
-            repository.updateDailyPlanStatus(planId, "FILLED", "Filled using minute_prices 10:10 close");
+            repository.updateDailyPlanStatus(planId, "FILLED", "Filled using minute_prices " + matchedTime + " close");
 
             filledCount++;
             spentAmount = spentAmount.add(amount).setScale(2, RoundingMode.HALF_UP);
@@ -188,5 +193,9 @@ public class StrategyExecutionService {
             running = running.add(weight);
         }
         return weights;
+    }
+
+    private String formatMinuteTimestamp(LocalDateTime matchedAt) {
+        return matchedAt.format(MINUTE_TS_FORMATTER);
     }
 }

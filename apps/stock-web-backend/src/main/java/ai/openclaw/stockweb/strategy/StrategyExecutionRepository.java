@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,20 +90,36 @@ public class StrategyExecutionRepository {
         return new ArrayList<>(deduped.values());
     }
 
-    public Optional<BigDecimal> findMinuteClosePrice(long symbolId, LocalDate runDate, int hour, int minute) {
-        LocalDateTime ts = runDate.atTime(hour, minute);
-        List<BigDecimal> prices = jdbc.query(
+    public Optional<MinutePriceMatch> findNearestMinuteClosePrice(
+            long symbolId,
+            LocalDate runDate,
+            int targetHour,
+            int targetMinute,
+            int windowBeforeMinutes,
+            int windowAfterMinutes
+    ) {
+        LocalDateTime targetTs = runDate.atTime(targetHour, targetMinute);
+        LocalDateTime windowStart = targetTs.minusMinutes(windowBeforeMinutes);
+        LocalDateTime windowEnd = targetTs.plusMinutes(windowAfterMinutes);
+
+        List<MinutePriceMatch> prices = jdbc.query(
                 """
-                SELECT close
+                SELECT ts, close
                 FROM minute_prices
                 WHERE symbol_id = :symbolId
-                  AND ts = :ts
+                  AND ts BETWEEN :windowStart AND :windowEnd
+                ORDER BY ABS(TIMESTAMPDIFF(SECOND, ts, :targetTs)) ASC, ts ASC
                 LIMIT 1
                 """,
                 new MapSqlParameterSource()
                         .addValue("symbolId", symbolId)
-                        .addValue("ts", ts),
-                (rs, rowNum) -> rs.getBigDecimal("close")
+                        .addValue("windowStart", windowStart)
+                        .addValue("windowEnd", windowEnd)
+                        .addValue("targetTs", targetTs),
+                (rs, rowNum) -> new MinutePriceMatch(
+                        rs.getTimestamp("ts").toLocalDateTime().truncatedTo(ChronoUnit.MINUTES),
+                        rs.getBigDecimal("close")
+                )
         );
         return prices.stream().findFirst();
     }

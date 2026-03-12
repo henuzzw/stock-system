@@ -18,12 +18,12 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 - Research: `/home/openclaw/projects/stock-research`
   - Tables: `technical_low_daily`, `valuation_low_daily`, `candidates_daily (rank_left/rank_right)`, `scores_daily (trend_ok + total_score)`
   - Trend gate: 2-of-3 (close>SMA20, SMA20 non-down, no_new_low_10)
-- Web backend: `/home/openclaw/projects/stock-web-backend`
+- Web backend: `/home/openclaw/projects/stock-system/apps/stock-web-backend`
   - API endpoints: /api/health, /api/ranks/*, /api/candidates (supports filters), /api/symbol/{code}, /api/symbols
-- Web frontend: `/home/openclaw/projects/stock-web-frontend`
+- Web frontend: `/home/openclaw/projects/stock-system/apps/stock-web-frontend`
 
 ## Agreed trading strategy (config)
-- Strategy config file: `/home/openclaw/projects/stock-web-backend/strategy.yml`
+- Strategy config file: `/home/openclaw/projects/stock-system/strategy.yml`
 - Buy: daily budget 100,000; pick 6 symbols from candidates (left top3 + right top3), dedupe; only `trend_ok=1`, else hold cash.
 - Buy price time: 10:10 minute bar close.
 - Sell: 14:50 minute bar close.
@@ -31,7 +31,10 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 - Allocation: pool split 50/50; weight by total_score * (1/rank).
 
 ## Feature checklist
-- Canonical checklist: `/home/openclaw/projects/stock-web-backend/FEATURES.md`
+- Canonical checklist: `/home/openclaw/projects/stock-system/FEATURES.md`
+
+## Monorepo path note
+- In this consolidated repo, the backend jar to build/run is the Spring Boot app under `/home/openclaw/projects/stock-system/apps/stock-web-backend`.
 
 ## Immediate next steps (not done yet)
 1) Paper-trading/account system (users/JWT/accounts/orders/trades/positions/equity curves).
