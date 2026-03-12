@@ -24,8 +24,10 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api'
 
+const router = useRouter()
 const form = reactive({ username: '', password: '' })
 const submitting = ref(false)
 const message = ref('')
@@ -35,13 +37,27 @@ const submit = async () => {
   message.value = ''
   ok.value = false
   submitting.value = true
+  const username = form.username
+  const password = form.password
   try {
-    const res = await api.post('/auth/register', form)
+    const res = await api.post('/auth/register', { username, password })
     ok.value = !!res.data?.success
     message.value = res.data?.message || '注册成功'
     if (ok.value) {
-      form.username = ''
-      form.password = ''
+      try {
+        const loginRes = await api.post('/auth/login', { username, password })
+        localStorage.setItem('auth_token', loginRes.data.token)
+        localStorage.setItem('auth_user', JSON.stringify(loginRes.data.user))
+        message.value = '注册并登录成功，正在跳转…'
+        form.username = ''
+        form.password = ''
+        setTimeout(() => router.push('/'), 600)
+      } catch {
+        form.username = ''
+        form.password = ''
+        message.value = '注册成功，请前往登录'
+        setTimeout(() => router.push('/login'), 800)
+      }
     }
   } catch (err) {
     message.value = err?.response?.data?.message || '注册失败'
