@@ -12,10 +12,10 @@
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="技术低位 Top20" name="tech">
-        <data-table :rows="tech" @row-click="goSymbol" />
+        <data-table :rows="tech" @row-click="goSymbol" @view-chart="goSymbol" />
       </el-tab-pane>
       <el-tab-pane label="估值便宜 Top20" name="val">
-        <data-table :rows="val" @row-click="goSymbol" />
+        <data-table :rows="val" @row-click="goSymbol" @view-chart="goSymbol" />
       </el-tab-pane>
       <el-tab-pane label="候选池 Left Top20" name="left">
         <el-row :gutter="12" style="margin-bottom: 10px">
@@ -29,7 +29,7 @@
           </el-col>
           <el-col :span="4" style="text-align:right"><el-button @click="loadLeft">应用</el-button></el-col>
         </el-row>
-        <candidates-table :rows="candLeft" @row-click="goSymbol" />
+        <candidates-table :rows="candLeft" @row-click="goSymbol" @view-chart="goSymbol" />
       </el-tab-pane>
       <el-tab-pane label="候选池 Right Top20" name="right">
         <el-row :gutter="12" style="margin-bottom: 10px">
@@ -43,7 +43,7 @@
           </el-col>
           <el-col :span="4" style="text-align:right"><el-button @click="loadRight">应用</el-button></el-col>
         </el-row>
-        <candidates-table :rows="candRight" @row-click="goSymbol" />
+        <candidates-table :rows="candRight" @row-click="goSymbol" @view-chart="goSymbol" />
       </el-tab-pane>
     </el-tabs>
   </div>

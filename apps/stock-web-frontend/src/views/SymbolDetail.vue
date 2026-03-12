@@ -73,20 +73,20 @@ const renderChart = () => {
   const x = prices.value.map(p => p.trade_date)
   const close = prices.value.map(p => p.close)
 
+  const sma10Map = new Map(technicals.value.map(t => [t.trade_date, t.sma_10]))
   const sma20Map = new Map(technicals.value.map(t => [t.trade_date, t.sma_20]))
-  const sma60Map = new Map(technicals.value.map(t => [t.trade_date, t.sma_60]))
+  const sma10 = x.map(d => sma10Map.get(d) ?? null)
   const sma20 = x.map(d => sma20Map.get(d) ?? null)
-  const sma60 = x.map(d => sma60Map.get(d) ?? null)
 
   chart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['Close', 'SMA20', 'SMA60'] },
+    legend: { data: ['收盘价', 'SMA10', 'SMA20'] },
     xAxis: { type: 'category', data: x },
     yAxis: { type: 'value' },
     series: [
-      { name: 'Close', data: close, type: 'line', smooth: true },
-      { name: 'SMA20', data: sma20, type: 'line', smooth: true },
-      { name: 'SMA60', data: sma60, type: 'line', smooth: true }
+      { name: '收盘价', data: close, type: 'line', smooth: true },
+      { name: 'SMA10', data: sma10, type: 'line', smooth: true },
+      { name: 'SMA20', data: sma20, type: 'line', smooth: true }
     ]
   })
 }
