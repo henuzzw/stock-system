@@ -18,9 +18,14 @@ import java.util.Map;
 @CrossOrigin
 public class SymbolsController {
     private final NamedParameterJdbcTemplate jdbc;
+    private final SymbolInitializationService symbolInitializationService;
 
-    public SymbolsController(NamedParameterJdbcTemplate jdbc) {
+    public SymbolsController(
+            NamedParameterJdbcTemplate jdbc,
+            SymbolInitializationService symbolInitializationService
+    ) {
         this.jdbc = jdbc;
+        this.symbolInitializationService = symbolInitializationService;
     }
 
     @GetMapping("/symbols")
@@ -69,6 +74,7 @@ public class SymbolsController {
         String market = request.market() == null ? "CN" : request.market().trim().toUpperCase();
         String exchange = request.exchange() == null ? null : request.exchange().trim().toUpperCase();
         String source = request.source() == null || request.source().isBlank() ? "manual" : request.source().trim();
+        boolean initializeData = request.initializeData() != null && request.initializeData();
 
         if (code.isBlank() || name.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -82,12 +88,15 @@ public class SymbolsController {
                 Map.of("code", code)
         );
         if (!existing.isEmpty()) {
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "created", false,
-                    "message", "Symbol already exists",
-                    "symbol", existing.get(0)
-            ));
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("created", false);
+            body.put("message", "Symbol already exists");
+            body.put("symbol", existing.get(0));
+            if (initializeData) {
+                body.put("initialization", symbolInitializationService.initialize(code, market));
+            }
+            return ResponseEntity.ok(body);
         }
 
         try {
@@ -115,12 +124,15 @@ public class SymbolsController {
             symbol.put("exchange", exchange);
             symbol.put("source", source);
             symbol.put("is_active", 1);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "success", true,
-                    "created", true,
-                    "message", "Symbol created",
-                    "symbol", symbol
-            ));
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("created", true);
+            body.put("message", initializeData ? "Symbol created and initialization started" : "Symbol created");
+            body.put("symbol", symbol);
+            if (initializeData) {
+                body.put("initialization", symbolInitializationService.initialize(code, market));
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(body);
         } catch (DuplicateKeyException ex) {
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -152,7 +164,8 @@ public class SymbolsController {
             String name,
             String market,
             String exchange,
-            String source
+            String source,
+            Boolean initializeData
     ) {
     }
 }

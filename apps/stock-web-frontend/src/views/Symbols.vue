@@ -43,6 +43,9 @@
             <el-option label="NYSE" value="NYSE" />
           </el-select>
         </el-form-item>
+        <el-form-item label="补基础数据">
+          <el-switch v-model="form.initializeData" active-text="添加后立即初始化" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -68,7 +71,8 @@ const form = reactive({
   name: '',
   market: 'CN',
   exchange: 'SH',
-  source: 'manual'
+  source: 'manual',
+  initializeData: true
 })
 
 const search = async () => {
@@ -87,6 +91,7 @@ const resetForm = () => {
   form.market = 'CN'
   form.exchange = 'SH'
   form.source = 'manual'
+  form.initializeData = true
 }
 
 const submitAdd = async () => {
@@ -98,7 +103,16 @@ const submitAdd = async () => {
   try {
     const res = await addSymbol({ ...form })
     const payload = res.data || {}
-    ElMessage.success(payload.message || '添加成功')
+    if (payload.initialization?.steps?.length) {
+      const failed = payload.initialization.steps.filter(step => !step.success)
+      if (failed.length) {
+        ElMessage.warning(`${payload.message || '已添加'}，但初始化有失败步骤：${failed.map(x => x.step).join('、')}`)
+      } else {
+        ElMessage.success(`${payload.message || '添加成功'}，基础数据初始化已完成`)
+      }
+    } else {
+      ElMessage.success(payload.message || '添加成功')
+    }
     dialogVisible.value = false
     q.value = form.code.trim()
     resetForm()
