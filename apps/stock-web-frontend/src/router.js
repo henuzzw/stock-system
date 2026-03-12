@@ -1,0 +1,23 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import Dashboard from './views/Dashboard.vue'
+import Symbols from './views/Symbols.vue'
+import Status from './views/Status.vue'
+import Register from './views/Register.vue'
+import Login from './views/Login.vue'
+import SymbolDetail from './views/SymbolDetail.vue'
+
+const routes = [
+  { path: '/', name: 'home', component: Dashboard },
+  { path: '/symbols', name: 'symbols', component: Symbols },
+  { path: '/status', name: 'status', component: Status },
+  { path: '/register', name: 'register', component: Register },
+  { path: '/login', name: 'login', component: Login },
+  { path: '/symbol/:code', name: 'symbol', component: SymbolDetail, props: true }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-pipeline"
+version = "0.1.0"
+description = "MySQL-backed stock watchlist ingestion pipeline for A-shares and US equities."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "akshare>=1.15.0",
+  "baostock>=0.8.8",
+  "mysql-connector-python>=9.0.0",
+  "pandas>=2.2.0",
+  "python-dotenv>=1.0.1",
+  "yfinance>=0.2.54",
+  "efinance>=0.5.5",
+]
+
+
+[project.scripts]
+stock-pipeline = "stock_pipeline.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

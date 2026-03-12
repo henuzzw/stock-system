@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-research"
+version = "0.1.0"
+description = "MySQL-backed A-share ranking analytics for technical and valuation lows."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "mysql-connector-python>=9.0.0",
+  "numpy>=2.0.0",
+  "pandas>=2.2.0",
+  "python-dotenv>=1.0.1",
+]
+
+[project.scripts]
+stock-research = "stock_research.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

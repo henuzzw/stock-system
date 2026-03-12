@@ -1,0 +1,102 @@
+# stock-research
+
+MySQL-backed A-share ranking analytics built on top of the existing `stock_pipeline` database.
+
+## Requirements
+
+- Python 3.12
+- MySQL database `stock_pipeline`
+- No external APIs; reads only from MySQL tables already present in `stock_pipeline`
+
+## Setup
+
+1. Create a virtual environment with Python 3.12.
+2. Install the package:
+
+```bash
+pip install -e .
+```
+
+3. Copy `.env.example` to `.env` and adjust values if needed.
+
+## Environment
+
+```env
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3310
+MYSQL_USER=flowing
+MYSQL_PASSWORD=flowing
+MYSQL_DATABASE=stock_pipeline
+```
+
+## Commands
+
+Initialize output tables:
+
+```bash
+stock-research init-db
+```
+
+Run technical low ranking:
+
+```bash
+stock-research run-technical
+```
+
+Run valuation low ranking:
+
+```bash
+stock-research run-valuation
+```
+
+Run both:
+
+```bash
+stock-research run-all
+```
+
+Optional `--run-date YYYY-MM-DD` can be passed to any ranking command. Ranking commands upsert rows idempotently on `(run_date, symbol_id)` and print the Top 20 with symbol code and name.
+
+## Output tables
+
+### `technical_low_daily`
+
+- `run_date` date
+- `symbol_id` bigint
+- `score` decimal(10,4)
+- `rank` int
+- `reasons` json
+- `created_at` timestamp
+
+Primary key: `(run_date, symbol_id)`  
+Secondary index: `(run_date, rank)`
+
+### `valuation_low_daily`
+
+Same schema and indexes as `technical_low_daily`.
+
+## Scoring logic
+
+### Technical low score
+
+Uses the latest `trade_date` per symbol from `daily_prices`, plus `technicals.sma_20` when available.
+
+- `price_percentile_120`: latest close within the last 120-trading-day high/low range
+- `drawdown_120`: decline from the last 120-trading-day peak to latest close
+- `distance_to_sma20`: percent distance from latest close to `sma_20`
+- `distance_to_sma60`: percent distance from latest close to a 60-day SMA computed from `daily_prices.close`
+
+Score is normalized to `0-100`, where lower percentile, larger drawdown, and being further below moving averages increase the score. Per-symbol components and missing inputs are stored in `reasons`.
+
+### Valuation low score
+
+Uses the latest `fundamentals` row per symbol.
+
+- Lower `pe_ttm`, `pb`, and `ps` increase the score
+- Higher `dividend_yield` increases the score
+- Missing or invalid values are excluded from weighting and recorded in `reasons`
+
+## Notes
+
+- The project filters to active A-share symbols using `symbols.market` and common Shanghai/Shenzhen code patterns.
+- Because this environment blocks local TCP access, database execution was not validated here; the code is structured so it can be run directly in the target environment with the provided credentials.

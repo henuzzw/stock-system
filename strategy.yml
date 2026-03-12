@@ -1,0 +1,79 @@
+# Trading strategy configuration (paper trading)
+# All times are Asia/Shanghai.
+
+version: 1
+
+universe:
+  # Source pools
+  candidates:
+    left:
+      use: true
+      top_k: 3
+      extend_to_k: 10   # for sell rule (top10)
+    right:
+      use: true
+      top_k: 3
+      extend_to_k: 10
+  daily_buy_target_count: 6
+  dedupe: true
+
+filters:
+  trend_gate:
+    enabled: true
+    # 2-of-3 gate
+    rule: two_of_three
+    conditions:
+      - close_gt_sma20
+      - sma20_non_down
+      - no_new_low_10
+    if_insufficient_hold_cash: true
+
+budget:
+  initial_cash: 10000000
+  daily_buy_budget: 100000
+
+allocation:
+  # Budget split between candidate pools
+  pool_split:
+    left: 0.5
+    right: 0.5
+  # Weighting within pool
+  weight_method: total_score
+  # Fallback if total_score missing
+  missing_score_weight: 1.0
+  # Optional extra rank weighting (multiplies score weight)
+  rank_weighting:
+    enabled: true
+    formula: inverse_rank
+    power: 1.0   # 1/rank^power
+
+execution:
+  price_source: minute_prices
+  buy_time: "10:10"
+  sell_time: "14:50"
+  # A-share lot size
+  lot_size: 100
+  order_types:
+    market: true
+    limit: true
+  limit_order:
+    # If true, limit orders can remain pending until end of day; otherwise fail immediately.
+    allow_pending: false
+
+sell_rules:
+  out_of_top10:
+    enabled: true
+    consecutive_days: 2
+    pool_scope: same_pool   # sell based on the pool it came from
+  hard_stop:
+    enabled: true
+    threshold_pct: -8.0
+
+fees:
+  enabled: false
+  commission_rate: 0.0003
+  stamp_tax_rate: 0.001
+  min_commission: 5.0
+
+logging:
+  store_reasons_json: true

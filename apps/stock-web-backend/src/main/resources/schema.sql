@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(64) NOT NULL,
+    password_hash VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_users_username UNIQUE (username)
+);
+
+CREATE TABLE IF NOT EXISTS accounts (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    initial_cash DECIMAL(18, 2) NOT NULL,
+    cash_balance DECIMAL(18, 2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_accounts_user_id UNIQUE (user_id),
+    CONSTRAINT fk_accounts_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS positions (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    symbol_id BIGINT NOT NULL,
+    quantity DECIMAL(18, 4) NOT NULL DEFAULT 0,
+    available_quantity DECIMAL(18, 4) NOT NULL DEFAULT 0,
+    avg_cost DECIMAL(18, 4) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_positions_user_symbol UNIQUE (user_id, symbol_id),
+    CONSTRAINT fk_positions_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_positions_symbol_id FOREIGN KEY (symbol_id) REFERENCES symbols (id)
+);
