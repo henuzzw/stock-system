@@ -416,6 +416,73 @@ public class StrategyExecutionRepository {
         );
     }
 
+    public List<PositionSnapshot> findOpenPositions(long userId) {
+        return jdbc.query(
+                """
+                SELECT symbol_id, quantity, available_quantity, avg_cost
+                FROM positions
+                WHERE user_id = :userId
+                  AND quantity > 0
+                ORDER BY symbol_id ASC
+                """,
+                Map.of("userId", userId),
+                (rs, rowNum) -> new PositionSnapshot(
+                        rs.getLong("symbol_id"),
+                        rs.getBigDecimal("quantity"),
+                        rs.getBigDecimal("available_quantity"),
+                        rs.getBigDecimal("avg_cost")
+                )
+        );
+    }
+
+    public Optional<BigDecimal> findLatestClosePrice(long symbolId, LocalDate runDate) {
+        List<BigDecimal> rows = jdbc.query(
+                """
+                SELECT close
+                FROM daily_prices
+                WHERE symbol_id = :symbolId
+                  AND trade_date <= :runDate
+                ORDER BY trade_date DESC
+                LIMIT 1
+                """,
+                Map.of("symbolId", symbolId, "runDate", runDate),
+                (rs, rowNum) -> rs.getBigDecimal("close")
+        );
+        return rows.stream().findFirst();
+    }
+
+    public Optional<Integer> findLatestTrendOk(long symbolId, LocalDate runDate) {
+        List<Integer> rows = jdbc.query(
+                """
+                SELECT trend_ok
+                FROM scores_daily
+                WHERE symbol_id = :symbolId
+                  AND run_date <= :runDate
+                ORDER BY run_date DESC
+                LIMIT 1
+                """,
+                Map.of("symbolId", symbolId, "runDate", runDate),
+                (rs, rowNum) -> (Integer) rs.getObject("trend_ok")
+        );
+        return rows.stream().findFirst();
+    }
+
+    public boolean isOutOfTopKForConsecutiveDays(long symbolId, String poolName, LocalDate runDate, int topK, int consecutiveDays) {
+        String rankColumn = "left".equalsIgnoreCase(poolName) ? "rank_left" : "rank_right";
+        List<Integer> rows = jdbc.query(
+                "SELECT " + rankColumn + " AS rank_value FROM candidates_daily WHERE symbol_id = :symbolId AND run_date <= :runDate ORDER BY run_date DESC LIMIT :limit",
+                new MapSqlParameterSource()
+                        .addValue("symbolId", symbolId)
+                        .addValue("runDate", runDate)
+                        .addValue("limit", consecutiveDays),
+                (rs, rowNum) -> (Integer) rs.getObject("rank_value")
+        );
+        if (rows.size() < consecutiveDays) {
+            return false;
+        }
+        return rows.stream().allMatch(rank -> rank == null || rank > topK);
+    }
+
     private long requireKey(KeyHolder keyHolder) {
         Number key = keyHolder.getKey();
         if (key == null) {
