@@ -36,12 +36,7 @@ public class StrategyExecutionService {
         List<ExecutionCandidate> candidates = repository.findExecutionCandidates(runDate);
 
         long strategyRunId = repository.createStrategyRun(
-                userId,
-                STRATEGY_KEY,
-                runDate,
-                "EXECUTE_BUY_SELL",
-                "RUNNING",
-                "Building daily buy/sell plan"
+                userId, STRATEGY_KEY, runDate, "EXECUTE_BUY_SELL", "RUNNING", "Building daily buy/sell plan"
         );
 
         int plannedCount = 0;
@@ -49,6 +44,7 @@ public class StrategyExecutionService {
         int skippedCount = 0;
         BigDecimal spentAmount = ZERO;
 
+        // --- SELL pass ---
         for (PositionSnapshot position : repository.findOpenPositions(userId)) {
             BigDecimal latestClose = repository.findLatestClosePrice(position.symbolId(), runDate).orElse(null);
             Integer latestTrendOk = repository.findLatestTrendOk(position.symbolId(), runDate).orElse(null);
@@ -60,14 +56,16 @@ public class StrategyExecutionService {
                     .divide(position.avgCost(), 6, RoundingMode.HALF_UP)
                     .compareTo(new BigDecimal("-0.08")) <= 0;
             boolean trendFailed = latestTrendOk != null && latestTrendOk == 0;
-            boolean rankingFailed = repository.isOutOfTopKForConsecutiveDays(position.symbolId(), "right", runDate, 10, 2)
+            boolean rankingFailed =
+                    repository.isOutOfTopKForConsecutiveDays(position.symbolId(), "right", runDate, 10, 2)
                     || repository.isOutOfTopKForConsecutiveDays(position.symbolId(), "left", runDate, 10, 2);
 
             if (!(stopLoss || trendFailed || rankingFailed)) {
                 continue;
             }
 
-            MinutePriceMatch sellMatch = repository.findNearestMinuteClosePrice(position.symbolId(), runDate, 14, 30, 120, 30).orElse(null);
+            MinutePriceMatch sellMatch = repository.findNearestMinuteClosePrice(
+                    position.symbolId(), runDate, 14, 30, 120, 30).orElse(null);
             if (sellMatch == null || sellMatch.closePrice() == null || sellMatch.closePrice().compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
@@ -77,82 +75,53 @@ public class StrategyExecutionService {
                 continue;
             }
 
-            long sellPlanId = repository.createDailyPlan(
-                    strategyRunId,
-                    userId,
-                    position.symbolId(),
-                    runDate,
-                    "SELL",
-                    null,
-                    null,
-                    null,
-                    latestTrendOk,
-                    null,
-                    quantity.multiply(sellMatch.closePrice()).setScale(2, RoundingMode.HALF_UP),
-                    buildSellReason(stopLoss, trendFailed, rankingFailed),
-                    "PLANNED"
+            long sellPlanId = repository.createDailyPlanSell(
+                    strategyRunId, userId, position.symbolId(), runDate,
+                    quantity, quantity.multiply(sellMatch.closePrice()).setScale(2, RoundingMode.HALF_UP),
+                    buildSellReason(stopLoss, trendFailed, rankingFailed), "PLANNED"
             );
             plannedCount++;
 
             BigDecimal amount = quantity.multiply(sellMatch.closePrice()).setScale(4, RoundingMode.HALF_UP);
             String matchedTime = formatMinuteTimestamp(sellMatch.matchedAt());
-            long orderId = repository.createOrder(
-                    userId,
-                    position.symbolId(),
-                    "SELL",
-                    "MARKET",
-                    "FILLED",
-                    quantity,
-                    quantity,
-                    sellMatch.closePrice(),
-                    "strategy-exec",
+            long orderId = repository.createOrderWithInfo(
+                    userId, position.symbolId(), "SELL", "MARKET", "FILLED",
+                    quantity, sellMatch.closePrice(), "strategy-exec",
                     "strategyRunId=" + strategyRunId + ",planId=" + sellPlanId + ",matchedMinute=" + matchedTime
             );
-            repository.createTrade(
-                    orderId,
-                    userId,
-                    position.symbolId(),
-                    "SELL",
-                    quantity,
-                    sellMatch.closePrice(),
-                    amount,
+            repository.createTradeWithFilled(
+                    orderId, userId, position.symbolId(), "SELL",
+                    quantity, sellMatch.closePrice(), amount,
                     BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP),
                     sellMatch.matchedAt().atZone(MARKET_ZONE).toInstant()
             );
             repository.updateAccountCashBalance(userId, amount);
-            repository.upsertPosition(userId, position.symbolId(), "SELL", quantity, sellMatch.closePrice());
-            repository.updateDailyPlanStatus(sellPlanId, "FILLED", "Sell filled using minute_prices " + matchedTime + " close");
+            repository.upsertPositionBySide(userId, position.symbolId(), "SELL", quantity, sellMatch.closePrice());
+            repository.updateDailyPlanStatus(sellPlanId, "FILLED", "Sell filled at " + matchedTime);
             filledCount++;
         }
 
+        // --- Check if any candidates ---
         if (candidates.isEmpty() || budget.compareTo(BigDecimal.ZERO) <= 0) {
             String summary = candidates.isEmpty()
                     ? "No eligible candidates after rank/trend filtering"
                     : "Cash balance below execution budget threshold";
-            repository.updateStrategyRun(strategyRunId, "EXECUTE_BUY_SELL", "SUCCESS", summary);
+            repository.updateStrategyRun(strategyRunId, "SUCCESS", summary, LocalDateTime.now());
             return new StrategyExecutionResult(strategyRunId, runDate, budget, plannedCount, filledCount, skippedCount, spentAmount, cashBalance, "SUCCESS", summary);
         }
 
         List<BigDecimal> weights = computeWeights(candidates);
 
+        // --- BUY pass ---
         for (int i = 0; i < candidates.size(); i++) {
             ExecutionCandidate candidate = candidates.get(i);
             BigDecimal targetWeight = weights.get(i);
             BigDecimal targetAmount = budget.multiply(targetWeight).setScale(2, RoundingMode.HALF_UP);
-            long planId = repository.createDailyPlan(
-                    strategyRunId,
-                    userId,
-                    candidate.symbolId(),
-                    runDate,
-                    "BUY",
-                    candidate.poolName(),
-                    candidate.rankValue(),
-                    candidate.totalScore(),
-                    candidate.trendOk(),
-                    targetWeight,
-                    targetAmount,
-                    "Planned from " + candidate.poolName() + " pool",
-                    "PLANNED"
+
+            long planId = repository.createDailyPlanBuy(
+                    strategyRunId, userId, candidate.symbolId(), runDate,
+                    candidate.poolName(), candidate.rankValue(), candidate.totalScore(),
+                    candidate.trendOk(), targetWeight, targetAmount, "PLANNED"
             );
             plannedCount++;
 
@@ -162,7 +131,8 @@ public class StrategyExecutionService {
                 continue;
             }
 
-            MinutePriceMatch minuteMatch = repository.findNearestMinuteClosePrice(candidate.symbolId(), runDate, 10, 30, 60, 120).orElse(null);
+            MinutePriceMatch minuteMatch = repository.findNearestMinuteClosePrice(
+                    candidate.symbolId(), runDate, 10, 30, 60, 120).orElse(null);
             if (minuteMatch == null || minuteMatch.closePrice() == null || minuteMatch.closePrice().compareTo(BigDecimal.ZERO) <= 0) {
                 repository.updateDailyPlanStatus(planId, "SKIPPED", "Missing intraday minute price near buy trigger");
                 skippedCount++;
@@ -183,38 +153,26 @@ public class StrategyExecutionService {
             String matchedTime = formatMinuteTimestamp(minuteMatch.matchedAt());
             BigDecimal quantity = targetAmount.divide(minutePrice, 4, RoundingMode.DOWN);
             if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-                repository.updateDailyPlanStatus(planId, "SKIPPED", "Quantity rounded to zero at matched minute price " + matchedTime);
+                repository.updateDailyPlanStatus(planId, "SKIPPED", "Quantity rounded to zero at " + matchedTime);
                 skippedCount++;
                 continue;
             }
 
             BigDecimal amount = quantity.multiply(minutePrice).setScale(4, RoundingMode.HALF_UP);
-            long orderId = repository.createOrder(
-                    userId,
-                    candidate.symbolId(),
-                    "BUY",
-                    "MARKET",
-                    "FILLED",
-                    quantity,
-                    quantity,
-                    minutePrice,
-                    "strategy-exec",
+            long orderId = repository.createOrderWithInfo(
+                    userId, candidate.symbolId(), "BUY", "MARKET", "FILLED",
+                    quantity, minutePrice, "strategy-exec",
                     "strategyRunId=" + strategyRunId + ",planId=" + planId + ",matchedMinute=" + matchedTime
             );
-            repository.createTrade(
-                    orderId,
-                    userId,
-                    candidate.symbolId(),
-                    "BUY",
-                    quantity,
-                    minutePrice,
-                    amount,
+            repository.createTradeWithFilled(
+                    orderId, userId, candidate.symbolId(), "BUY",
+                    quantity, minutePrice, amount,
                     BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP),
                     minuteMatch.matchedAt().atZone(MARKET_ZONE).toInstant()
             );
             repository.updateAccountCashBalance(userId, amount.negate());
-            repository.upsertPosition(userId, candidate.symbolId(), "BUY", quantity, minutePrice);
-            repository.updateDailyPlanStatus(planId, "FILLED", "Filled using minute_prices " + matchedTime + " close");
+            repository.upsertPositionBySide(userId, candidate.symbolId(), "BUY", quantity, minutePrice);
+            repository.updateDailyPlanStatus(planId, "FILLED", "Filled at " + matchedTime);
 
             filledCount++;
             spentAmount = spentAmount.add(amount).setScale(2, RoundingMode.HALF_UP);
@@ -223,19 +181,12 @@ public class StrategyExecutionService {
         BigDecimal remainingCash = repository.findCashBalanceByUserId(userId).setScale(2, RoundingMode.HALF_UP);
         String status = skippedCount > 0 ? "PARTIAL" : "SUCCESS";
         String summary = "planned=" + plannedCount + ", filled=" + filledCount + ", skipped=" + skippedCount + ", spent=" + spentAmount;
-        repository.updateStrategyRun(strategyRunId, "EXECUTE_BUY_SELL", status, summary);
+        repository.updateStrategyRun(strategyRunId, status, summary, LocalDateTime.now());
 
         return new StrategyExecutionResult(
-                strategyRunId,
-                runDate,
-                budget,
-                plannedCount,
-                filledCount,
-                skippedCount,
-                spentAmount,
-                remainingCash,
-                status,
-                summary
+                strategyRunId, runDate, budget,
+                plannedCount, filledCount, skippedCount, spentAmount, remainingCash,
+                status, summary
         );
     }
 

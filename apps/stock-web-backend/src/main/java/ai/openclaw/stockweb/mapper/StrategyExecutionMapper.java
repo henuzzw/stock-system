@@ -60,7 +60,7 @@ public interface StrategyExecutionMapper {
             FROM minute_prices
             WHERE symbol_id = #{symbolId}
               AND DATE(ts) = #{runDate}
-              AND TIME(ts) BETWEEN 
+              AND TIME(ts) BETWEEN
                   TIME(DATE_SUB(MAKETIME(#{targetHour}, #{targetMinute}, 0), INTERVAL #{windowBeforeMinutes} MINUTE))
                   AND TIME(DATE_ADD(MAKETIME(#{targetHour}, #{targetMinute}, 0), INTERVAL #{windowAfterMinutes} MINUTE))
             ORDER BY ABS(TIMESTAMPDIFF(MINUTE, ts, MAKETIME(#{targetHour}, #{targetMinute}, 0))) ASC
@@ -130,28 +130,74 @@ public interface StrategyExecutionMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertStrategyRun(StrategyRunView strategyRun);
 
+    @Select("""
+            SELECT id, user_id, strategy_key, run_date, run_type, status, message, created_at, ended_at
+            FROM strategy_runs
+            WHERE user_id = #{userId}
+            ORDER BY run_date DESC, created_at DESC
+            LIMIT 1
+            """)
+    Optional<StrategyRunView> findLatestStrategyRunByUserId(@Param("userId") long userId);
+
+    @Select("""
+            SELECT dp.id, dp.user_id, dp.strategy_run_id, dp.symbol_id, dp.plan_date,
+                   dp.action, dp.side, dp.quantity, dp.price_target, dp.matched_minute,
+                   dp.status, dp.created_at, dp.updated_at,
+                   s.code, s.name
+            FROM daily_plan dp
+            JOIN symbols s ON s.id = dp.symbol_id
+            WHERE dp.strategy_run_id = #{strategyRunId}
+            ORDER BY dp.plan_date DESC, dp.created_at DESC
+            """)
+    List<DailyPlanView> findDailyPlansByStrategyRunId(@Param("strategyRunId") long strategyRunId);
+
     @Insert("""
-            INSERT INTO daily_plan (user_id, strategy_run_id, symbol_id, plan_date, action, side, quantity, price_target, 
+            INSERT INTO daily_plan (user_id, strategy_run_id, symbol_id, plan_date, action, side, quantity, price_target,
                                     matched_minute, status, created_at)
-            VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{planDate}, #{action}, #{side}, #{quantity}, #{priceTarget},
-                    #{matchedMinute}, #{status}, #{createdAt})
+            VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{planDate}, #{action}, #{side},
+                    #{quantity}, #{priceTarget}, #{matchedMinute}, #{status}, #{createdAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertDailyPlan(DailyPlanView dailyPlan);
+    int insertDailyPlan(@Param("userId") long userId,
+                        @Param("strategyRunId") long strategyRunId,
+                        @Param("symbolId") long symbolId,
+                        @Param("planDate") LocalDate planDate,
+                        @Param("action") String action,
+                        @Param("side") String side,
+                        @Param("quantity") BigDecimal quantity,
+                        @Param("priceTarget") BigDecimal priceTarget,
+                        @Param("matchedMinute") String matchedMinute,
+                        @Param("status") String status,
+                        @Param("createdAt") LocalDateTime createdAt);
 
     @Insert("""
             INSERT INTO orders (user_id, strategy_run_id, symbol_id, order_type, side, quantity, price, status, created_at)
             VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{orderType}, #{side}, #{quantity}, #{price}, #{status}, #{createdAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertOrder(ai.openclaw.stockweb.account.OrderView order);
+    int insertOrder(@Param("userId") long userId,
+                    @Param("strategyRunId") long strategyRunId,
+                    @Param("symbolId") long symbolId,
+                    @Param("orderType") String orderType,
+                    @Param("side") String side,
+                    @Param("quantity") BigDecimal quantity,
+                    @Param("price") BigDecimal price,
+                    @Param("status") String status,
+                    @Param("createdAt") LocalDateTime createdAt);
 
     @Insert("""
             INSERT INTO trades (user_id, strategy_run_id, symbol_id, side, quantity, price, amount, created_at)
             VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, #{createdAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertTrade(TradeView trade);
+    int insertTrade(@Param("userId") long userId,
+                    @Param("strategyRunId") long strategyRunId,
+                    @Param("symbolId") long symbolId,
+                    @Param("side") String side,
+                    @Param("quantity") BigDecimal quantity,
+                    @Param("price") BigDecimal price,
+                    @Param("amount") BigDecimal amount,
+                    @Param("createdAt") LocalDateTime createdAt);
 
     @Update("""
             UPDATE accounts
@@ -172,7 +218,13 @@ public interface StrategyExecutionMapper {
                 END,
                 updated_at = VALUES(updated_at)
             """)
-    int upsertPosition(ai.openclaw.stockweb.account.PositionView position);
+    int upsertPosition(@Param("userId") long userId,
+                        @Param("symbolId") long symbolId,
+                        @Param("quantity") BigDecimal quantity,
+                        @Param("availableQuantity") BigDecimal availableQuantity,
+                        @Param("avgCost") BigDecimal avgCost,
+                        @Param("createdAt") LocalDateTime createdAt,
+                        @Param("updatedAt") LocalDateTime updatedAt);
 
     @Update("""
             UPDATE daily_plan

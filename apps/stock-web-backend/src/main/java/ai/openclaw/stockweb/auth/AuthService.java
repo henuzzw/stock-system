@@ -55,7 +55,8 @@ public class AuthService {
             throw new AuthException("Invalid username or password");
         }
 
-        UserBasicInfo basicInfo = new UserBasicInfo(user.id(), user.username(), user.createdAt());
+        UserBasicInfo basicInfo = new UserBasicInfo(user.id(), user.username(),
+                java.time.LocalDateTime.ofInstant(user.createdAt(), java.time.ZoneId.systemDefault()));
         return new LoginResponse(true, jwtService.createToken(basicInfo), basicInfo);
     }
 
