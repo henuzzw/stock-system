@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ai.openclaw.stockweb.mapper.AuthMapper">
+
+    <select id="findByUsername" resultType="ai.openclaw.stockweb.auth.UserAuthRecord">
+        SELECT id, username, password_hash, created_at
+        FROM users
+        WHERE username = #{username}
+        LIMIT 1
+    </select>
+
+    <select id="findById" resultType="ai.openclaw.stockweb.auth.UserAuthRecord">
+        SELECT id, username, password_hash, created_at
+        FROM users
+        WHERE id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="existsByUsername" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM users
+        WHERE username = #{username}
+    </select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password_hash, created_at)
+        VALUES (#{username}, #{passwordHash}, #{createdAt})
+    </insert>
+
+    <update id="updatePassword">
+        UPDATE users
+        SET password_hash = #{passwordHash}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ai.openclaw.stockweb.mapper.StrategyExecutionMapper">
+
+    <select id="findCashBalanceByUserId" resultType="java.math.BigDecimal">
+        SELECT cash_balance
+        FROM accounts
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findExecutionCandidates" resultType="ai.openclaw.stockweb.strategy.ExecutionCandidate">
+        SELECT c.symbol_id,
+               picked.pool_name,
+               picked.rank_value,
+               s.total_score,
+               s.trend_ok
+        FROM (
+            SELECT symbol_id, 'left' AS pool_name, rank_left AS rank_value
+            FROM candidates_daily
+            WHERE run_date = #{runDate}
+              AND rank_left IS NOT NULL
+              AND rank_left &lt;= 3
+            UNION ALL
+            SELECT symbol_id, 'right' AS pool_name, rank_right AS rank_value
+            FROM candidates_daily
+            WHERE run_date = #{runDate}
+              AND rank_right IS NOT NULL
+              AND rank_right &lt;= 3
+        ) picked
+        JOIN candidates_daily c
+          ON c.run_date = #{runDate}
+         AND c.symbol_id = picked.symbol_id
+        LEFT JOIN scores_daily s
+          ON s.run_date = #{runDate}
+         AND s.symbol_id = picked.symbol_id
+        ORDER BY picked.rank_value ASC, picked.pool_name ASC, c.symbol_id ASC
+    </select>
+
+    <select id="findNearestMinuteClosePrice" resultType="ai.openclaw.stockweb.strategy.MinutePriceMatch">
+        SELECT symbol_id, close_price AS closePrice, ts
+        FROM minute_prices
+        WHERE symbol_id = #{symbolId}
+          AND DATE(ts) = #{runDate}
+          AND TIME(ts) BETWEEN
+              TIME(DATE_SUB(MAKETIME(#{targetHour}, #{targetMinute}, 0), INTERVAL #{windowBeforeMinutes} MINUTE))
+              AND TIME(DATE_ADD(MAKETIME(#{targetHour}, #{targetMinute}, 0), INTERVAL #{windowAfterMinutes} MINUTE))
+        ORDER BY ABS(TIMESTAMPDIFF(MINUTE, ts, MAKETIME(#{targetHour}, #{targetMinute}, 0))) ASC
+        LIMIT 1
+    </select>
+
+    <select id="findOpenPositions" resultType="ai.openclaw.stockweb.strategy.PositionSnapshot">
+        SELECT p.symbol_id,
+               p.quantity,
+               p.available_quantity,
+               p.avg_cost
+        FROM positions p
+        WHERE p.user_id = #{userId}
+          AND p.quantity > 0
+        ORDER BY p.symbol_id ASC
+    </select>
+
+    <select id="findLatestClosePrice" resultType="java.math.BigDecimal">
+        SELECT close
+        FROM daily_prices
+        WHERE symbol_id = #{symbolId}
+          AND trade_date = #{tradeDate}
+        LIMIT 1
+    </select>
+
+    <select id="findLatestTrendOk" resultType="java.lang.Integer">
+        SELECT trend_ok
+        FROM scores_daily
+        WHERE symbol_id = #{symbolId}
+          AND run_date = #{runDate}
+        LIMIT 1
+    </select>
+
+    <select id="isOutOfTopKForConsecutiveDays" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM candidates_daily
+        WHERE symbol_id = #{symbolId}
+          AND run_date BETWEEN DATE_SUB(#{runDate}, INTERVAL #{consecutiveDays} DAY) AND DATE_SUB(#{runDate}, INTERVAL 1 DAY)
+          AND (
+              (#{poolName} = 'left' AND (rank_left IS NULL OR rank_left > #{topK}))
+              OR (#{poolName} = 'right' AND (rank_right IS NULL OR rank_right > #{topK}))
+          )
+    </select>
+
+    <insert id="insertStrategyRun" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO strategy_runs (user_id, strategy_key, run_date, run_type, status, message, created_at)
+        VALUES (#{userId}, #{strategyKey}, #{runDate}, #{runType}, #{status}, #{message}, #{createdAt})
+    </insert>
+
+    <select id="findLatestStrategyRunByUserId" resultType="ai.openclaw.stockweb.account.StrategyRunView">
+        SELECT id, user_id, strategy_key, run_date, run_type, status, message, created_at, ended_at
+        FROM strategy_runs
+        WHERE user_id = #{userId}
+        ORDER BY run_date DESC, created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findDailyPlansByStrategyRunId" resultType="ai.openclaw.stockweb.account.DailyPlanView">
+        SELECT dp.id, dp.user_id, dp.strategy_run_id, dp.symbol_id, dp.plan_date,
+               dp.action, dp.side, dp.quantity, dp.price_target, dp.matched_minute,
+               dp.status, dp.created_at, dp.updated_at,
+               s.code, s.name
+        FROM daily_plan dp
+        JOIN symbols s ON s.id = dp.symbol_id
+        WHERE dp.strategy_run_id = #{strategyRunId}
+        ORDER BY dp.plan_date DESC, dp.created_at DESC
+    </select>
+
+    <insert id="insertDailyPlan" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO daily_plan (user_id, strategy_run_id, symbol_id, plan_date, action, side, quantity, price_target,
+                                matched_minute, status, created_at)
+        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{planDate}, #{action}, #{side},
+                #{quantity}, #{priceTarget}, #{matchedMinute}, #{status}, #{createdAt})
+    </insert>
+
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders (user_id, strategy_run_id, symbol_id, order_type, side, quantity, price, status, created_at)
+        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{orderType}, #{side}, #{quantity}, #{price}, #{status}, #{createdAt})
+    </insert>
+
+    <insert id="insertTrade" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trades (user_id, strategy_run_id, symbol_id, side, quantity, price, amount, created_at)
+        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, #{createdAt})
+    </insert>
+
+    <update id="updateAccountCashBalance">
+        UPDATE accounts
+        SET cash_balance = cash_balance + #{delta}
+        WHERE user_id = #{userId}
+    </update>
+
+    <insert id="upsertPosition">
+        INSERT INTO positions (user_id, symbol_id, quantity, available_quantity, avg_cost, created_at, updated_at)
+        VALUES (#{userId}, #{symbolId}, #{quantity}, #{availableQuantity}, #{avgCost}, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            quantity = quantity + VALUES(quantity),
+            available_quantity = available_quantity + VALUES(available_quantity),
+            avg_cost = CASE
+                WHEN quantity + VALUES(quantity) = 0 THEN 0
+                ELSE ((quantity * avg_cost) + (VALUES(quantity) * VALUES(avg_cost))) / (quantity + VALUES(quantity))
+            END,
+            updated_at = VALUES(updated_at)
+    </insert>
+
+    <update id="updateDailyPlanStatus">
+        UPDATE daily_plan
+        SET status = #{status}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStrategyRun">
+        UPDATE strategy_runs
+        SET status = #{status}, message = #{message}, ended_at = #{endedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findLatestClosePriceAnyDate" resultType="java.math.BigDecimal">
+        SELECT close
+        FROM daily_prices
+        WHERE symbol_id = #{symbolId}
+        ORDER BY trade_date DESC
+        LIMIT 1
+    </select>
+
+</mapper>

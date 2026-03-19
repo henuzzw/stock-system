@@ -1,147 +1,36 @@
 package ai.openclaw.stockweb.mapper;
 
-import ai.openclaw.stockweb.account.AccountPositionView;
-import ai.openclaw.stockweb.account.AccountSummaryView;
-import ai.openclaw.stockweb.account.OrderView;
-import ai.openclaw.stockweb.account.PositionView;
-import ai.openclaw.stockweb.account.TradeView;
-import org.apache.ibatis.annotations.*;
+import ai.openclaw.stockweb.account.*;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 
 @Mapper
 public interface AccountMapper {
 
-    @Select("""
-            SELECT a.initial_cash,
-                   a.cash_balance,
-                   COUNT(p.id) AS positions_count,
-                   COALESCE(SUM(p.quantity * latest.close), 0) AS positions_market_value
-            FROM accounts a
-            LEFT JOIN positions p ON p.user_id = a.user_id
-            LEFT JOIN (
-                SELECT dp.symbol_id, dp.close
-                FROM daily_prices dp
-                JOIN (
-                    SELECT symbol_id, MAX(trade_date) AS max_trade_date
-                    FROM daily_prices
-                    GROUP BY symbol_id
-                ) latest_dp
-                  ON latest_dp.symbol_id = dp.symbol_id
-                 AND latest_dp.max_trade_date = dp.trade_date
-            ) latest ON latest.symbol_id = p.symbol_id
-            WHERE a.user_id = #{userId}
-            GROUP BY a.user_id
-            """)
     AccountSummaryView findSummaryByUserId(@Param("userId") long userId);
 
-    @Select("""
-            SELECT p.id, p.user_id, p.symbol_id, s.code, s.name,
-                   p.quantity, p.available_quantity, p.avg_cost,
-                   p.created_at, p.updated_at
-            FROM positions p
-            JOIN symbols s ON s.id = p.symbol_id
-            WHERE p.user_id = #{userId}
-            ORDER BY s.code ASC
-            """)
     List<AccountPositionView> findPositionsByUserId(@Param("userId") long userId);
 
-    @Select("""
-            SELECT o.id, o.user_id, o.strategy_run_id, o.symbol_id, o.order_type,
-                   o.side, o.quantity, o.price, o.status, o.created_at,
-                   s.code, s.name
-            FROM orders o
-            JOIN symbols s ON s.id = o.symbol_id
-            WHERE o.user_id = #{userId}
-            ORDER BY o.created_at DESC
-            LIMIT #{limit}
-            """)
     List<OrderView> findOrdersByUserId(@Param("userId") long userId, @Param("limit") int limit);
 
-    @Select("""
-            SELECT t.id, t.user_id, t.strategy_run_id, t.symbol_id, t.side,
-                   t.quantity, t.price, t.amount, t.created_at,
-                   s.code, s.name
-            FROM trades t
-            JOIN symbols s ON s.id = t.symbol_id
-            WHERE t.user_id = #{userId}
-            ORDER BY t.created_at DESC
-            LIMIT #{limit}
-            """)
     List<TradeView> findTradesByUserId(@Param("userId") long userId, @Param("limit") int limit);
 
-    @Select("""
-            SELECT sr.id, sr.user_id, sr.strategy_key, sr.run_date, sr.run_type,
-                   sr.status, sr.message, sr.created_at, sr.ended_at
-            FROM strategy_runs sr
-            WHERE sr.user_id = #{userId}
-            ORDER BY sr.run_date DESC, sr.created_at DESC
-            LIMIT #{limit}
-            """)
-    List<ai.openclaw.stockweb.account.StrategyRunView> findStrategyRunsByUserId(@Param("userId") long userId, @Param("limit") int limit);
+    List<StrategyRunView> findStrategyRunsByUserId(@Param("userId") long userId, @Param("limit") int limit);
 
-    @Select("""
-            SELECT dp.id, dp.user_id, dp.strategy_run_id, dp.symbol_id, dp.plan_date,
-                   dp.action, dp.side, dp.quantity, dp.price_target, dp.matched_minute,
-                   dp.status, dp.created_at, dp.updated_at,
-                   s.code, s.name
-            FROM daily_plan dp
-            JOIN symbols s ON s.id = dp.symbol_id
-            WHERE dp.user_id = #{userId}
-            ORDER BY dp.plan_date DESC, dp.created_at DESC
-            LIMIT #{limit}
-            """)
     List<AccountPositionView> findDailyPlansByUserId(@Param("userId") long userId, @Param("limit") int limit);
 
-    @Insert("""
-            INSERT INTO accounts (user_id, initial_cash, cash_balance)
-            VALUES (#{userId}, #{initialCash}, #{cashBalance})
-            """)
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insertAccount(ai.openclaw.stockweb.account.AccountView account);
+    int insertAccount(AccountView account);
 
-    @Select("""
-            SELECT id, user_id, initial_cash, cash_balance, created_at
-            FROM accounts
-            WHERE user_id = #{userId}
-            LIMIT 1
-            """)
-    ai.openclaw.stockweb.account.AccountView findAccountByUserId(@Param("userId") long userId);
+    AccountView findAccountByUserId(@Param("userId") long userId);
 
-    @Update("""
-            UPDATE accounts
-            SET cash_balance = cash_balance + #{delta}
-            WHERE user_id = #{userId}
-            """)
     int updateAccountCashBalance(@Param("userId") long userId, @Param("delta") BigDecimal delta);
 
-    @Insert("""
-            INSERT INTO positions (user_id, symbol_id, quantity, available_quantity, avg_cost, created_at, updated_at)
-            VALUES (#{userId}, #{symbolId}, #{quantity}, #{availableQuantity}, #{avgCost}, #{createdAt}, #{updatedAt})
-            ON DUPLICATE KEY UPDATE
-                quantity = quantity + VALUES(quantity),
-                available_quantity = available_quantity + VALUES(available_quantity),
-                avg_cost = CASE
-                    WHEN quantity + VALUES(quantity) = 0 THEN 0
-                    ELSE ((quantity * avg_cost) + (VALUES(quantity) * VALUES(avg_cost))) / (quantity + VALUES(quantity))
-                END,
-                updated_at = VALUES(updated_at)
-            """)
     int upsertPosition(PositionView position);
 
-    @Insert("""
-            INSERT INTO orders (user_id, strategy_run_id, symbol_id, order_type, side, quantity, price, status, created_at)
-            VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{orderType}, #{side}, #{quantity}, #{price}, #{status}, #{createdAt})
-            """)
-    @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertOrder(OrderView order);
 
-    @Insert("""
-            INSERT INTO trades (user_id, strategy_run_id, symbol_id, side, quantity, price, amount, created_at)
-            VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, #{createdAt})
-            """)
-    @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertTrade(TradeView trade);
 }
