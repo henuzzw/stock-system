@@ -1,7 +1,7 @@
 package ai.openclaw.stockweb.account;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record AccountPositionView(
         long id,
@@ -12,7 +12,7 @@ public record AccountPositionView(
         BigDecimal quantity,
         BigDecimal availableQuantity,
         BigDecimal avgCost,
-        Instant createdAt,
-        Instant updatedAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

@@ -1,10 +1,10 @@
 package ai.openclaw.stockweb.auth;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record UserBasicInfo(
         long id,
         String username,
-        Instant createdAt
+        LocalDateTime createdAt
 ) {
 }

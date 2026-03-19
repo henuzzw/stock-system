@@ -1,16 +1,17 @@
 package ai.openclaw.stockweb.account;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record StrategyRunView(
-        long id,
+        Long id,
         long userId,
         String strategyKey,
         LocalDate runDate,
-        String stage,
+        String runType,
         String status,
-        String summary,
-        Instant createdAt
+        String message,
+        LocalDateTime createdAt,
+        LocalDateTime endedAt
 ) {
 }

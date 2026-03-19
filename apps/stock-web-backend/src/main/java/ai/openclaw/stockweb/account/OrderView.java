@@ -2,23 +2,25 @@ package ai.openclaw.stockweb.account;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 public record OrderView(
-        long id,
-        long userId,
-        long symbolId,
-        String code,
-        String name,
-        String side,
+        Long id,
+        Long userId,
+        Long strategyRunId,
+        Long symbolId,
         String orderType,
+        String side,
+        BigDecimal quantity,
+        BigDecimal price,
         String status,
-        BigDecimal requestedQuantity,
-        BigDecimal filledQuantity,
-        BigDecimal limitPrice,
-        BigDecimal avgFillPrice,
-        String source,
-        String note,
-        Instant createdAt,
-        Instant updatedAt
+        LocalDateTime createdAt,
+        Instant fillUpdatedAt,
+        String code,
+        String name
 ) {
+    public OrderView(Long id, Long userId, Long strategyRunId, Long symbolId, String orderType, String side,
+                     BigDecimal quantity, BigDecimal price, String status, LocalDateTime createdAt) {
+        this(id, userId, strategyRunId, symbolId, orderType, side, quantity, price, status, createdAt, null, null, null);
+    }
 }

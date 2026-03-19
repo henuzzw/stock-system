@@ -71,7 +71,7 @@ public class AccountController {
     ) {
         try {
             UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
-            return ResponseEntity.ok(accountRepository.findOrdersByUserId(user.id()));
+            return ResponseEntity.ok(accountRepository.findOrdersByUserId(user.id(), 100));
         } catch (AuthException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
         }
@@ -83,7 +83,7 @@ public class AccountController {
     ) {
         try {
             UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
-            return ResponseEntity.ok(accountRepository.findTradesByUserId(user.id()));
+            return ResponseEntity.ok(accountRepository.findTradesByUserId(user.id(), 100));
         } catch (AuthException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
         }
@@ -95,7 +95,7 @@ public class AccountController {
     ) {
         try {
             UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
-            return ResponseEntity.ok(accountRepository.findStrategyRunsByUserId(user.id()));
+            return ResponseEntity.ok(accountRepository.findStrategyRunsByUserId(user.id(), 100));
         } catch (AuthException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
         }
@@ -107,7 +107,7 @@ public class AccountController {
     ) {
         try {
             UserBasicInfo user = authService.getCurrentUser(authorizationHeader);
-            return ResponseEntity.ok(accountRepository.findDailyPlansByUserId(user.id()));
+            return ResponseEntity.ok(accountRepository.findDailyPlansByUserId(user.id(), 100));
         } catch (AuthException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(false, ex.getMessage()));
         }

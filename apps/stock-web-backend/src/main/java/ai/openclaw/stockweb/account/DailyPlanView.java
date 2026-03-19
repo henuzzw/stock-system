@@ -1,26 +1,22 @@
 package ai.openclaw.stockweb.account;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record DailyPlanView(
-        long id,
-        long strategyRunId,
-        long userId,
-        long symbolId,
-        String code,
-        String name,
-        LocalDate runDate,
-        String planType,
-        String poolName,
-        Integer rankValue,
-        BigDecimal totalScore,
-        Integer trendOk,
-        BigDecimal targetWeight,
-        BigDecimal targetAmount,
-        String actionReason,
+        Long id,
+        Long userId,
+        Long strategyRunId,
+        Long symbolId,
+        LocalDate planDate,
+        String action,
+        String side,
+        BigDecimal quantity,
+        BigDecimal priceTarget,
+        String matchedMinute,
         String status,
-        Instant createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }
