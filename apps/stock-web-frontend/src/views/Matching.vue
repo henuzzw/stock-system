@@ -33,6 +33,57 @@
           <el-descriptions-item label="本次跳过">{{ currentRun.skipped ?? 0 }}</el-descriptions-item>
           <el-descriptions-item label="本次金额">{{ fmtMoney(currentRun.totalAmount) }}</el-descriptions-item>
         </el-descriptions>
+
+        <template v-if="runResults.length">
+          <el-divider content-position="left">本次逐单结果</el-divider>
+          <el-table :data="runResults" size="small" style="width:100%; margin-bottom:16px;">
+            <el-table-column label="订单" min-width="180">
+              <template #default="{ row }">
+                <div>#{{ row.orderId }}</div>
+                <div style="color:#606266; font-size:12px;">{{ row.code || '-' }} {{ row.name || '' }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="方向" min-width="120">
+              <template #default="{ row }">{{ sideLabel(row.side) }} / {{ typeLabel(row.orderType) }}</template>
+            </el-table-column>
+            <el-table-column label="待撮数量" min-width="100">
+              <template #default="{ row }">{{ fmtQty(row.remainingQuantity) }}</template>
+            </el-table-column>
+            <el-table-column label="撮合价" min-width="150">
+              <template #default="{ row }">
+                <span>{{ row.marketPrice == null ? '-' : fmtMoney(row.marketPrice) }}</span>
+                <span v-if="row.priceSource" style="color:#909399;"> / {{ row.priceSource }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="结果" min-width="180">
+              <template #default="{ row }">
+                <el-tag :type="row.filled ? 'success' : 'warning'">{{ row.filled ? 'FILLED' : 'SKIPPED' }}</el-tag>
+                <span v-if="row.skipReason" style="margin-left:8px;">{{ skipReasonLabel(row.skipReason) }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-divider content-position="left">跳过原因</el-divider>
+          <el-empty v-if="!skippedResults.length" description="本次没有跳过订单" />
+          <div v-else style="display:grid; gap:8px;">
+            <el-alert
+              v-for="row in skippedResults"
+              :key="row.orderId"
+              :title="`订单 #${row.orderId} ${row.code || '-'} ${skipReasonLabel(row.skipReason)}`"
+              type="warning"
+              show-icon
+              :closable="false"
+            >
+              <template #default>
+                {{ sideLabel(row.side) }} / {{ typeLabel(row.orderType) }}
+                ，待撮 {{ fmtQty(row.remainingQuantity) }}
+                ，限价 {{ row.limitPrice == null ? '-' : fmtMoney(row.limitPrice) }}
+                ，市场价 {{ row.marketPrice == null ? '-' : fmtMoney(row.marketPrice) }}
+                <span v-if="row.priceSource">，价格来源 {{ row.priceSource }}</span>
+              </template>
+            </el-alert>
+          </div>
+        </template>
         <el-empty v-else description="尚未执行过撮合" />
       </el-card>
 
@@ -63,6 +114,8 @@ const msg = ref('')
 const ok = ref(true)
 const currentRun = ref(null)
 const lastRun = ref(null)
+const runResults = computed(() => currentRun.value?.results || [])
+const skippedResults = computed(() => runResults.value.filter((row) => !row.filled))
 
 const authHeader = () => ({ Authorization: `Bearer ${token.value}` })
 
@@ -102,11 +155,41 @@ const fmtMoney = (value) =>
     maximumFractionDigits: 4
   })
 
+const fmtQty = (value) =>
+  Number(value || 0).toLocaleString('zh-CN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4
+  })
+
 const fmtDateTime = (value) => {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString('zh-CN', { hour12: false })
+}
+
+const sideLabel = (value) => {
+  if (value === 'BUY') return '买入'
+  if (value === 'SELL') return '卖出'
+  return value || '-'
+}
+
+const typeLabel = (value) => {
+  if (value === 'LIMIT') return '限价'
+  if (value === 'MARKET') return '市价'
+  return value || '-'
+}
+
+const skipReasonLabel = (value) => {
+  const mapping = {
+    NO_PRICE: '无可用价格',
+    LIMIT_NOT_REACHED: '限价未触发',
+    INSUFFICIENT_CASH: '现金不足',
+    INSUFFICIENT_POSITION: '持仓不足',
+    ORDER_NOT_OPEN: '订单不是可撮合状态',
+    PROCESSING_ERROR: '处理异常'
+  }
+  return mapping[value] || value || '-'
 }
 
 onMounted(loadLastRun)

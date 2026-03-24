@@ -26,29 +26,30 @@ public class MatchingOrderExecutor {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public MatchingOrderResult process(long userId, long orderId) {
-        MatchableOrderView order = repository.lockOrderByIdAndUserId(orderId, userId).orElse(null);
+    public MatchingOrderResult process(long userId, MatchableOrderView orderSnapshot) {
+        MatchableOrderView order = repository.lockOrderByIdAndUserId(orderSnapshot.getId(), userId).orElse(null);
         if (order == null || !OPEN_STATUSES.contains(order.getStatus())) {
-            return MatchingOrderResult.skipped();
+            return MatchingOrderResult.skipped(
+                    order == null ? orderSnapshot : order,
+                    remainingQuantity(order == null ? orderSnapshot : order),
+                    null,
+                    MatchingSkipReason.ORDER_NOT_OPEN
+            );
         }
 
-        BigDecimal requestedQuantity = defaultQuantity(order.getQuantity());
-        BigDecimal alreadyFilled = defaultQuantity(order.getFilledQuantity());
-        BigDecimal remainingQuantity = requestedQuantity.subtract(alreadyFilled);
+        BigDecimal remainingQuantity = remainingQuantity(order);
         if (remainingQuantity.compareTo(ZERO) <= 0) {
-            return MatchingOrderResult.skipped();
+            return MatchingOrderResult.skipped(order, remainingQuantity, null, MatchingSkipReason.ORDER_NOT_OPEN);
         }
 
         LocalDateTime now = LocalDateTime.now(MARKET_ZONE);
-        MatchPriceView matchPrice = repository.findLatestMinutePrice(order.getSymbolId(), now.toLocalDate(), now)
-                .or(() -> repository.findLatestDailyPrice(order.getSymbolId()))
-                .orElse(null);
+        MatchPriceView matchPrice = resolveMatchPrice(order, now);
         if (matchPrice == null || matchPrice.getPrice() == null || matchPrice.getPrice().compareTo(ZERO) <= 0) {
-            return MatchingOrderResult.skipped();
+            return MatchingOrderResult.skipped(order, remainingQuantity, null, MatchingSkipReason.NO_PRICE);
         }
 
         if (!isPriceMatchable(order, matchPrice.getPrice())) {
-            return MatchingOrderResult.skipped();
+            return MatchingOrderResult.skipped(order, remainingQuantity, matchPrice, MatchingSkipReason.LIMIT_NOT_REACHED);
         }
 
         BigDecimal tradeAmount = remainingQuantity.multiply(matchPrice.getPrice()).setScale(4, RoundingMode.HALF_UP);
@@ -57,22 +58,22 @@ public class MatchingOrderExecutor {
         if ("BUY".equals(order.getSide())) {
             AccountView account = repository.lockAccountByUserId(userId).orElse(null);
             if (account == null || account.getCashBalance() == null || account.getCashBalance().compareTo(cashDelta) < 0) {
-                return MatchingOrderResult.skipped();
+                return MatchingOrderResult.skipped(order, remainingQuantity, matchPrice, MatchingSkipReason.INSUFFICIENT_CASH);
             }
             applyBuy(order, remainingQuantity, matchPrice, tradeAmount, cashDelta, now);
-            return MatchingOrderResult.filled(tradeAmount);
+            return MatchingOrderResult.filled(order, remainingQuantity, matchPrice, tradeAmount);
         }
 
         if ("SELL".equals(order.getSide())) {
             PositionView position = repository.lockPositionByUserIdAndSymbolId(userId, order.getSymbolId()).orElse(null);
             if (!hasEnoughPosition(position, remainingQuantity)) {
-                return MatchingOrderResult.skipped();
+                return MatchingOrderResult.skipped(order, remainingQuantity, matchPrice, MatchingSkipReason.INSUFFICIENT_POSITION);
             }
             applySell(order, position, remainingQuantity, matchPrice, tradeAmount, cashDelta, now);
-            return MatchingOrderResult.filled(tradeAmount);
+            return MatchingOrderResult.filled(order, remainingQuantity, matchPrice, tradeAmount);
         }
 
-        return MatchingOrderResult.skipped();
+        return MatchingOrderResult.skipped(order, remainingQuantity, matchPrice, MatchingSkipReason.ORDER_NOT_OPEN);
     }
 
     private void applyBuy(
@@ -165,6 +166,12 @@ public class MatchingOrderExecutor {
         return trade;
     }
 
+    private MatchPriceView resolveMatchPrice(MatchableOrderView order, LocalDateTime now) {
+        return repository.findLatestMinutePrice(order.getSymbolId(), now.toLocalDate(), now)
+                .or(() -> repository.findLatestDailyPrice(order.getSymbolId()))
+                .orElse(null);
+    }
+
     private boolean isPriceMatchable(MatchableOrderView order, BigDecimal marketPrice) {
         if (!"LIMIT".equalsIgnoreCase(order.getOrderType())) {
             return true;
@@ -193,5 +200,12 @@ public class MatchingOrderExecutor {
 
     private BigDecimal defaultQuantity(BigDecimal value) {
         return value == null ? ZERO : value;
+    }
+
+    private BigDecimal remainingQuantity(MatchableOrderView order) {
+        if (order == null) {
+            return ZERO;
+        }
+        return defaultQuantity(order.getQuantity()).subtract(defaultQuantity(order.getFilledQuantity()));
     }
 }

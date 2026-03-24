@@ -40,10 +40,13 @@ class MatchingOrderExecutorTest {
         when(repository.lockAccountByUserId(7L)).thenReturn(Optional.of(account));
         when(repository.lockPositionByUserIdAndSymbolId(7L, 10L)).thenReturn(Optional.empty());
 
-        MatchingOrderResult result = executor.process(7L, 42L);
+        MatchingOrderResult result = executor.process(7L, order);
 
         assertTrue(result.filled());
         assertEquals(0, new BigDecimal("1000.0000").compareTo(result.amount()));
+        assertEquals("FILLED", result.orderStatus());
+        assertEquals("TEST", result.priceSource());
+        assertEquals(0, new BigDecimal("100.0000").compareTo(result.marketPrice()));
         verify(repository).updateOrderAsFilled(eq(42L), eq(new BigDecimal("10.0000")), eq(new BigDecimal("100.0000")), any(LocalDateTime.class));
         verify(repository).updateAccountCashBalance(7L, new BigDecimal("-1000.00"));
 
@@ -80,9 +83,11 @@ class MatchingOrderExecutorTest {
                 .thenReturn(Optional.of(minutePrice));
         when(repository.lockAccountByUserId(9L)).thenReturn(Optional.of(account));
 
-        MatchingOrderResult result = executor.process(9L, 52L);
+        MatchingOrderResult result = executor.process(9L, order);
 
         assertFalse(result.filled());
+        assertEquals(MatchingSkipReason.INSUFFICIENT_CASH, result.skipReason());
+        assertEquals(0, new BigDecimal("100.0000").compareTo(result.marketPrice()));
         verify(repository, never()).updateOrderAsFilled(any(Long.class), any(BigDecimal.class), any(BigDecimal.class), any(LocalDateTime.class));
         verify(repository, never()).insertTrade(any(TradeView.class));
         verify(repository, never()).updateAccountCashBalance(any(Long.class), any(BigDecimal.class));
@@ -94,7 +99,7 @@ class MatchingOrderExecutorTest {
         MatchingOrderExecutor executor = new MatchingOrderExecutor(repository);
 
         MatchableOrderView order = order(77L, 5L, 3L, "SELL", "LIMIT", "14.0000", "10.0000", "4.0000", "PARTIAL");
-        MatchPriceView dailyPrice = matchPrice("15.0000", LocalDateTime.of(2026, 3, 24, 0, 0));
+        MatchPriceView dailyPrice = matchPrice("15.0000", LocalDateTime.of(2026, 3, 24, 0, 0), "DAILY");
         PositionView position = new PositionView();
         position.setId(90L);
         position.setUserId(5L);
@@ -109,10 +114,12 @@ class MatchingOrderExecutorTest {
         when(repository.findLatestDailyPrice(3L)).thenReturn(Optional.of(dailyPrice));
         when(repository.lockPositionByUserIdAndSymbolId(5L, 3L)).thenReturn(Optional.of(position));
 
-        MatchingOrderResult result = executor.process(5L, 77L);
+        MatchingOrderResult result = executor.process(5L, order);
 
         assertTrue(result.filled());
         assertEquals(0, new BigDecimal("90.0000").compareTo(result.amount()));
+        assertEquals("DAILY", result.priceSource());
+        assertEquals(0, new BigDecimal("6.0000").compareTo(result.remainingQuantity()));
         verify(repository).updateOrderAsFilled(eq(77L), eq(new BigDecimal("10.0000")), eq(new BigDecimal("15.0000")), any(LocalDateTime.class));
         verify(repository).updateAccountCashBalance(5L, new BigDecimal("90.00"));
 
@@ -126,6 +133,62 @@ class MatchingOrderExecutorTest {
         assertEquals(0, new BigDecimal("4.0000").compareTo(updated.getQuantity()));
         assertEquals(0, BigDecimal.ZERO.compareTo(updated.getAvailableQuantity()));
         assertEquals(0, new BigDecimal("11.0000").compareTo(updated.getAvgCost()));
+    }
+
+    @Test
+    void limitOrderSkipsWhenMarketDoesNotReachLimit() {
+        MatchingRepository repository = mock(MatchingRepository.class);
+        MatchingOrderExecutor executor = new MatchingOrderExecutor(repository);
+
+        MatchableOrderView order = order(88L, 4L, 6L, "BUY", "LIMIT", "10.0000", "5.0000", "0.0000", "NEW");
+        MatchPriceView minutePrice = matchPrice("10.5000", LocalDateTime.of(2026, 3, 24, 14, 3));
+
+        when(repository.lockOrderByIdAndUserId(88L, 4L)).thenReturn(Optional.of(order));
+        when(repository.findLatestMinutePrice(eq(6L), any(LocalDate.class), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(minutePrice));
+
+        MatchingOrderResult result = executor.process(4L, order);
+
+        assertFalse(result.filled());
+        assertEquals(MatchingSkipReason.LIMIT_NOT_REACHED, result.skipReason());
+        assertEquals(0, new BigDecimal("10.5000").compareTo(result.marketPrice()));
+        verify(repository, never()).updateOrderAsFilled(any(Long.class), any(BigDecimal.class), any(BigDecimal.class), any(LocalDateTime.class));
+    }
+
+    @Test
+    void orderSkipsWhenNoPriceExists() {
+        MatchingRepository repository = mock(MatchingRepository.class);
+        MatchingOrderExecutor executor = new MatchingOrderExecutor(repository);
+
+        MatchableOrderView order = order(91L, 2L, 8L, "SELL", "MARKET", "0", "2.0000", "0.0000", "NEW");
+
+        when(repository.lockOrderByIdAndUserId(91L, 2L)).thenReturn(Optional.of(order));
+        when(repository.findLatestMinutePrice(eq(8L), any(LocalDate.class), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+        when(repository.findLatestDailyPrice(8L)).thenReturn(Optional.empty());
+
+        MatchingOrderResult result = executor.process(2L, order);
+
+        assertFalse(result.filled());
+        assertEquals(MatchingSkipReason.NO_PRICE, result.skipReason());
+        assertEquals(null, result.marketPrice());
+    }
+
+    @Test
+    void orderSkipsWhenNoLongerOpen() {
+        MatchingRepository repository = mock(MatchingRepository.class);
+        MatchingOrderExecutor executor = new MatchingOrderExecutor(repository);
+
+        MatchableOrderView snapshot = order(99L, 3L, 7L, "BUY", "MARKET", "0", "1.0000", "0.0000", "NEW");
+        MatchableOrderView locked = order(99L, 3L, 7L, "BUY", "MARKET", "0", "1.0000", "1.0000", "FILLED");
+
+        when(repository.lockOrderByIdAndUserId(99L, 3L)).thenReturn(Optional.of(locked));
+
+        MatchingOrderResult result = executor.process(3L, snapshot);
+
+        assertFalse(result.filled());
+        assertEquals(MatchingSkipReason.ORDER_NOT_OPEN, result.skipReason());
+        assertEquals("FILLED", result.orderStatus());
     }
 
     private MatchableOrderView order(
@@ -143,6 +206,8 @@ class MatchingOrderExecutorTest {
         order.setId(id);
         order.setUserId(userId);
         order.setSymbolId(symbolId);
+        order.setCode("000001");
+        order.setName("Ping An");
         order.setSide(side);
         order.setOrderType(orderType);
         order.setPrice(new BigDecimal(price));
@@ -153,10 +218,14 @@ class MatchingOrderExecutorTest {
     }
 
     private MatchPriceView matchPrice(String price, LocalDateTime matchedAt) {
+        return matchPrice(price, matchedAt, "TEST");
+    }
+
+    private MatchPriceView matchPrice(String price, LocalDateTime matchedAt, String source) {
         MatchPriceView view = new MatchPriceView();
         view.setPrice(new BigDecimal(price));
         view.setMatchedAt(matchedAt);
-        view.setSource("TEST");
+        view.setSource(source);
         return view;
     }
 }

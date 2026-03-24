@@ -2,6 +2,7 @@ package ai.openclaw.stockweb.matching;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class MatchingRunView {
     private Long id;
@@ -11,6 +12,7 @@ public class MatchingRunView {
     private Integer skipped;
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
+    private List<MatchingOrderResult> results = List.of();
 
     public Long getId() {
         return id;
@@ -66,5 +68,13 @@ public class MatchingRunView {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<MatchingOrderResult> getResults() {
+        return results;
+    }
+
+    public void setResults(List<MatchingOrderResult> results) {
+        this.results = results == null ? List.of() : results;
     }
 }

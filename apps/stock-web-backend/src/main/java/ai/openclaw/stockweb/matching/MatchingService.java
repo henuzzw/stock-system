@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,10 +29,12 @@ public class MatchingService {
         int filledCount = 0;
         int skippedCount = 0;
         BigDecimal totalAmount = BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        List<MatchingOrderResult> results = new ArrayList<>();
 
         for (MatchableOrderView order : openOrders) {
             try {
-                MatchingOrderResult result = orderExecutor.process(userId, order.getId());
+                MatchingOrderResult result = orderExecutor.process(userId, order);
+                results.add(result);
                 if (result.filled()) {
                     filledCount++;
                     totalAmount = totalAmount.add(result.amount()).setScale(4, RoundingMode.HALF_UP);
@@ -40,6 +43,7 @@ public class MatchingService {
                 }
             } catch (Exception ex) {
                 skippedCount++;
+                results.add(MatchingOrderResult.processingError(order));
                 log.warn("Matching skipped order {} for user {} due to processing error", order.getId(), userId, ex);
             }
         }
@@ -51,6 +55,7 @@ public class MatchingService {
         run.setSkipped(skippedCount);
         run.setTotalAmount(totalAmount);
         run.setCreatedAt(LocalDateTime.now());
+        run.setResults(results);
         return saveRun(run);
     }
 

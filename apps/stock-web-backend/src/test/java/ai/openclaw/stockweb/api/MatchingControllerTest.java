@@ -4,7 +4,9 @@ import ai.openclaw.stockweb.auth.AuthException;
 import ai.openclaw.stockweb.auth.AuthService;
 import ai.openclaw.stockweb.auth.ErrorResponse;
 import ai.openclaw.stockweb.auth.UserBasicInfo;
+import ai.openclaw.stockweb.matching.MatchingOrderResult;
 import ai.openclaw.stockweb.matching.MatchingRunView;
+import ai.openclaw.stockweb.matching.MatchingSkipReason;
 import ai.openclaw.stockweb.matching.MatchingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,6 +36,25 @@ class MatchingControllerTest {
         run.setFilled(2);
         run.setSkipped(1);
         run.setTotalAmount(new BigDecimal("456.7800"));
+        run.setResults(List.of(new MatchingOrderResult(
+                77L,
+                9L,
+                "600036",
+                "China Merchants Bank",
+                "BUY",
+                "LIMIT",
+                "NEW",
+                new BigDecimal("42.0000"),
+                new BigDecimal("100.0000"),
+                BigDecimal.ZERO,
+                new BigDecimal("100.0000"),
+                false,
+                BigDecimal.ZERO,
+                new BigDecimal("42.5000"),
+                "DAILY",
+                LocalDateTime.of(2026, 3, 24, 0, 0),
+                MatchingSkipReason.LIMIT_NOT_REACHED
+        )));
 
         when(authService.getCurrentUser("Bearer demo-token"))
                 .thenReturn(new UserBasicInfo(5L, "demo", LocalDateTime.now()));

@@ -7,6 +7,8 @@ public class MatchableOrderView {
     private Long id;
     private Long userId;
     private Long symbolId;
+    private String code;
+    private String name;
     private String side;
     private String orderType;
     private BigDecimal price;
@@ -38,6 +40,22 @@ public class MatchableOrderView {
 
     public void setSymbolId(Long symbolId) {
         this.symbolId = symbolId;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getSide() {
