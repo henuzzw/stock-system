@@ -1,14 +1,16 @@
 # HANDOFF — Stock Quant System
 
-Last updated: 2026-03-20 (Asia/Shanghai)
+Last updated: 2026-03-24 (Asia/Shanghai)
 
 ## What is running
 - Nginx serves SPA on port 30000, proxies `/api/` to Spring Boot.
   - Nginx conf: `/etc/nginx/conf.d/market_reports.conf`
   - Frontend build output deployed to: `/var/www/stock-web`
+  - Requested mirror deploy target for this session: `/home/openclaw/.openclaw/workspace/reports` (copy blocked by sandbox permissions)
 - Spring Boot backend (port 8088) is managed by systemd:
   - Service: `stock-web-backend.service` (enabled)
   - Health: `curl http://127.0.0.1:30000/api/health`
+  - D6 update on 2026-03-24: rebuilt jar deployed in place and service was bounced by terminating the managed Java process; systemd respawned it on the new jar
 - Stock research catch-up is managed by user-level systemd for `openclaw`:
   - Timer: `stock-research-catchup.timer` (enabled)
   - Service: `stock-research-catchup.service`
@@ -27,8 +29,10 @@ Last updated: 2026-03-20 (Asia/Shanghai)
   - Tables: `technical_low_daily`, `valuation_low_daily`, `candidates_daily (rank_left/rank_right)`, `scores_daily (trend_ok + total_score)`
   - Trend gate: 2-of-3 (close>SMA20, SMA20 non-down, no_new_low_10)
 - Web backend: `/home/openclaw/projects/stock-system/apps/stock-web-backend`
-  - API endpoints: /api/health, /api/ranks/*, /api/candidates (supports filters), /api/symbol/{code}, /api/symbols
+  - API endpoints: /api/health, /api/ranks/*, /api/candidates (supports filters), /api/symbol/{code}, /api/symbols, /api/orders, /api/trades
+  - Trade APIs: `GET /api/trades`, `GET /api/trades/{id}`; both reuse Bearer JWT auth and scope queries to the current user
 - Web frontend: `/home/openclaw/projects/stock-system/apps/stock-web-frontend`
+  - Added standalone trades page: `/trades`
 
 ## Agreed trading strategy (config)
 - Strategy config file: `/home/openclaw/projects/stock-system/strategy.yml`
@@ -46,10 +50,16 @@ Last updated: 2026-03-20 (Asia/Shanghai)
 - In this consolidated repo, the backend jar to build/run is the Spring Boot app under `/home/openclaw/projects/stock-system/apps/stock-web-backend`.
 
 ## Immediate next steps (not done yet)
-1) Paper-trading/account system (users/JWT/accounts/orders/trades/positions/equity curves).
+1) Finish the remaining paper-trading/account surfaces: equity/PnL curve stats, fuller account dashboard consolidation, fees, and matching edge cases.
 2) Improve minute-bar reliability for Eastmoney provider failures on batch runs.
 3) Strategy executor + daily plan/trade logs using `strategy.yml`.
 4) Frontend pages: register/login, account dashboard, strategy dashboard.
+
+## D6 note
+- Backend trade reads now use a dedicated controller/service/repository/mapper path under `apps/stock-web-backend`.
+- Trade model now carries `id`, `userId`, `orderId`, `strategyRunId`, `symbolId`, `side`, `quantity`, `price`, `amount`, `createdAt`, `code`, and `name`.
+- Existing D5 order APIs were left unchanged.
+- Sandbox limits in this session prevented direct host-side `curl` and MySQL socket checks from inside Codex, so ownership/API verification should be rerun from an unsandboxed shell if needed.
 
 ## Minute-Bar Issue Note
 - Symptom: some symbol detail pages return `intraday: []` while daily prices, fundamentals, technicals, and candidates are present.

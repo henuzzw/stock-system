@@ -3,7 +3,6 @@ package ai.openclaw.stockweb.mapper;
 import ai.openclaw.stockweb.account.DailyPlanView;
 import ai.openclaw.stockweb.account.PositionView;
 import ai.openclaw.stockweb.account.StrategyRunView;
-import ai.openclaw.stockweb.account.TradeView;
 import ai.openclaw.stockweb.strategy.ExecutionCandidate;
 import ai.openclaw.stockweb.strategy.MinutePriceMatch;
 import ai.openclaw.stockweb.strategy.PositionSnapshot;
@@ -75,6 +74,7 @@ public interface StrategyExecutionMapper {
                     @Param("createdAt") LocalDateTime createdAt);
 
     int insertTrade(@Param("userId") long userId,
+                    @Param("orderId") Long orderId,
                     @Param("strategyRunId") long strategyRunId,
                     @Param("symbolId") long symbolId,
                     @Param("side") String side,

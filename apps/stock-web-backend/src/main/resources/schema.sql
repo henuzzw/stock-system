@@ -49,3 +49,18 @@ CREATE TABLE IF NOT EXISTS orders (
     CONSTRAINT fk_orders_symbol_id FOREIGN KEY (symbol_id) REFERENCES symbols (id)
 );
 
+CREATE TABLE IF NOT EXISTS trades (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    symbol_id BIGINT NOT NULL,
+    side VARCHAR(8) NOT NULL,
+    quantity DECIMAL(18, 4) NOT NULL,
+    price DECIMAL(18, 4) NOT NULL,
+    amount DECIMAL(18, 4) NOT NULL,
+    fee DECIMAL(18, 4) NOT NULL DEFAULT 0,
+    executed_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_trades_user_created_at (user_id, created_at),
+    KEY idx_trades_order_id (order_id)
+);

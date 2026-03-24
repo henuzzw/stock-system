@@ -1,6 +1,7 @@
 package ai.openclaw.stockweb.mapper;
 
 import ai.openclaw.stockweb.account.*;
+import ai.openclaw.stockweb.trade.TradeView;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

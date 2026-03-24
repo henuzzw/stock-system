@@ -35,7 +35,7 @@
 - D3 Account per user (initial cash 10,000,000) ✅
 - D4 Positions (partial buys/sells, cost basis, PnL) ✅
 - D5 Orders (market/limit; state machine) 🟡 schema + query API skeleton landed
-- D6 Trades (fills; link to orders; audit) 🟡 schema + query API skeleton landed
+- D6 Trades (fills; link to orders; audit) ✅ protected `/api/trades` + `/api/trades/{id}` landed; ownership enforced in query layer
 - D7 Matching engine uses minute bars (buy side: nearest 10:10 window, sell side pending) 🟡
 - D8 Fees model (optional) ❌
 - D9 Equity/PnL curve stats ❌
@@ -47,7 +47,7 @@
 - E3 Symbol detail (close + SMA20/60 + fundamentals + candidate history) ✅
 - E4 Symbols full search ✅
 - E5 Register/Login pages ❌
-- E6 Account page (cash/positions/orders/trades/equity) ❌
+- E6 Account page (cash/positions/orders/trades/equity) ❌ standalone `/trades` page landed; consolidated account workspace still incomplete
 - E7 Strategy page (daily plan, fills, sell triggers) ❌
 - E8 Export CSV/Excel (optional) ❌
 

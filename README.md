@@ -8,6 +8,7 @@ Monorepo for the stock data / research / web / paper-trading system.
 - `services/stock-research` — ranking, candidate pool, and score generation
 - `apps/stock-web-backend` — Spring Boot API, auth, account, and trading simulation backend
 - `apps/stock-web-frontend` — Vite frontend served behind nginx on port 30000
+- `services/stock-research/systemd` — user-level systemd timer/service for resilient research catch-up
 - `HANDOFF.md` — operator handoff notes
 - `FEATURES.md` — canonical feature checklist
 - `PROJECT.md` — backend/project implementation notes

@@ -1,6 +1,7 @@
 package ai.openclaw.stockweb.account;
 
 import ai.openclaw.stockweb.mapper.AccountMapper;
+import ai.openclaw.stockweb.trade.TradeView;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,7 +99,7 @@ public class AccountRepository {
     @Transactional
     public long createTrade(long userId, long strategyRunId, long symbolId, String side,
                             BigDecimal quantity, BigDecimal price, BigDecimal amount) {
-        TradeView trade = new TradeView(userId, strategyRunId, symbolId, side, quantity, price, amount, LocalDateTime.now());
+        TradeView trade = new TradeView(userId, null, strategyRunId, symbolId, side, quantity, price, amount, LocalDateTime.now());
         mapper.insertTrade(trade);
         return trade.id();
     }

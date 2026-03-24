@@ -1,4 +1,4 @@
-package ai.openclaw.stockweb.account;
+package ai.openclaw.stockweb.trade;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public class TradeView {
     private Long id;
     private Long userId;
+    private Long orderId;
     private Long strategyRunId;
     private Long symbolId;
     private String side;
@@ -13,11 +14,24 @@ public class TradeView {
     private BigDecimal price;
     private BigDecimal amount;
     private LocalDateTime createdAt;
+    private String code;
+    private String name;
 
     public TradeView() {}
 
-    public TradeView(Long userId, Long strategyRunId, Long symbolId, String side, BigDecimal quantity, BigDecimal price, BigDecimal amount, LocalDateTime createdAt) {
+    public TradeView(
+            Long userId,
+            Long orderId,
+            Long strategyRunId,
+            Long symbolId,
+            String side,
+            BigDecimal quantity,
+            BigDecimal price,
+            BigDecimal amount,
+            LocalDateTime createdAt
+    ) {
         this.userId = userId;
+        this.orderId = orderId;
         this.strategyRunId = strategyRunId;
         this.symbolId = symbolId;
         this.side = side;
@@ -33,6 +47,9 @@ public class TradeView {
     public Long getUserId() { return userId; }
     public Long userId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public Long getOrderId() { return orderId; }
+    public Long orderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
     public Long getStrategyRunId() { return strategyRunId; }
     public Long strategyRunId() { return strategyRunId; }
     public void setStrategyRunId(Long strategyRunId) { this.strategyRunId = strategyRunId; }
@@ -54,4 +71,10 @@ public class TradeView {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime createdAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getCode() { return code; }
+    public String code() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getName() { return name; }
+    public String name() { return name; }
+    public void setName(String name) { this.name = name; }
 }

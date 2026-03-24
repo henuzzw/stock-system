@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ai.openclaw.stockweb.mapper.TradeMapper">
+
+    <select id="findTradesByUserId" resultType="ai.openclaw.stockweb.trade.TradeView">
+        SELECT t.id,
+               t.user_id AS userId,
+               t.order_id AS orderId,
+               t.symbol_id AS symbolId,
+               t.side,
+               t.quantity,
+               t.price,
+               t.amount,
+               COALESCE(t.executed_at, t.created_at) AS createdAt,
+               s.code,
+               s.name
+        FROM trades t
+        JOIN symbols s ON s.id = t.symbol_id
+        WHERE t.user_id = #{userId}
+        ORDER BY COALESCE(t.executed_at, t.created_at) DESC, t.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findTradeByIdAndUserId" resultType="ai.openclaw.stockweb.trade.TradeView">
+        SELECT t.id,
+               t.user_id AS userId,
+               t.order_id AS orderId,
+               t.symbol_id AS symbolId,
+               t.side,
+               t.quantity,
+               t.price,
+               t.amount,
+               COALESCE(t.executed_at, t.created_at) AS createdAt,
+               s.code,
+               s.name
+        FROM trades t
+        JOIN symbols s ON s.id = t.symbol_id
+        WHERE t.id = #{id}
+          AND t.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+</mapper>

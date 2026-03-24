@@ -4,7 +4,6 @@ import ai.openclaw.stockweb.account.DailyPlanView;
 import ai.openclaw.stockweb.account.OrderView;
 import ai.openclaw.stockweb.account.PositionView;
 import ai.openclaw.stockweb.account.StrategyRunView;
-import ai.openclaw.stockweb.account.TradeView;
 import ai.openclaw.stockweb.mapper.StrategyExecutionMapper;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -120,7 +119,7 @@ public class StrategyExecutionRepository {
     @Transactional
     public long createTrade(long userId, long strategyRunId, long symbolId, String side,
                             BigDecimal quantity, BigDecimal price, BigDecimal amount) {
-        return mapper.insertTrade(userId, strategyRunId, symbolId, side, quantity, price, amount, LocalDateTime.now());
+        return mapper.insertTrade(userId, null, strategyRunId, symbolId, side, quantity, price, amount, LocalDateTime.now());
     }
 
     @Transactional
@@ -128,7 +127,7 @@ public class StrategyExecutionRepository {
                                      BigDecimal quantity, BigDecimal price, BigDecimal amount,
                                      BigDecimal fee, Instant filledAt) {
         LocalDateTime filledAtLd = filledAt.atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
-        return mapper.insertTrade(userId, 0L, symbolId, side, quantity, price, amount, filledAtLd);
+        return mapper.insertTrade(userId, orderId, 0L, symbolId, side, quantity, price, amount, filledAtLd);
     }
 
     // --- Positions ---

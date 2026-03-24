@@ -136,8 +136,8 @@
     </insert>
 
     <insert id="insertTrade" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO trades (user_id, strategy_run_id, symbol_id, side, quantity, price, amount, created_at)
-        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, #{createdAt})
+        INSERT INTO trades (user_id, order_id, symbol_id, side, quantity, price, amount, fee, executed_at, created_at)
+        VALUES (#{userId}, COALESCE(#{orderId}, 0), #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, 0, #{createdAt}, #{createdAt})
     </insert>
 
     <update id="updateAccountCashBalance">
