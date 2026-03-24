@@ -11,6 +11,7 @@
         <el-button type="primary" plain @click="$router.push('/account')">账户</el-button>
         <el-button type="primary" plain @click="$router.push('/orders')">订单</el-button>
         <el-button type="primary" plain @click="$router.push('/trades')">成交</el-button>
+        <el-button type="primary" plain @click="$router.push('/matching')">撮合</el-button>
         <el-button type="primary" plain @click="$router.push('/status')">状态页</el-button>
         <el-button type="success" plain @click="$router.push('/register')">注册</el-button>
         <el-button type="warning" plain @click="$router.push('/login')">登录</el-button>

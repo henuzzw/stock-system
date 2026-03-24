@@ -29,10 +29,12 @@ Last updated: 2026-03-24 (Asia/Shanghai)
   - Tables: `technical_low_daily`, `valuation_low_daily`, `candidates_daily (rank_left/rank_right)`, `scores_daily (trend_ok + total_score)`
   - Trend gate: 2-of-3 (close>SMA20, SMA20 non-down, no_new_low_10)
 - Web backend: `/home/openclaw/projects/stock-system/apps/stock-web-backend`
-  - API endpoints: /api/health, /api/ranks/*, /api/candidates (supports filters), /api/symbol/{code}, /api/symbols, /api/orders, /api/trades
+  - API endpoints: /api/health, /api/ranks/*, /api/candidates (supports filters), /api/symbol/{code}, /api/symbols, /api/orders, /api/trades, /api/matching
   - Trade APIs: `GET /api/trades`, `GET /api/trades/{id}`; both reuse Bearer JWT auth and scope queries to the current user
+  - Matching APIs: `POST /api/matching/run`, `GET /api/matching/last`; both reuse Bearer JWT auth and scope matching to the current user
 - Web frontend: `/home/openclaw/projects/stock-system/apps/stock-web-frontend`
   - Added standalone trades page: `/trades`
+  - Added standalone matching page: `/matching`
 
 ## Agreed trading strategy (config)
 - Strategy config file: `/home/openclaw/projects/stock-system/strategy.yml`
@@ -60,6 +62,20 @@ Last updated: 2026-03-24 (Asia/Shanghai)
 - Trade model now carries `id`, `userId`, `orderId`, `strategyRunId`, `symbolId`, `side`, `quantity`, `price`, `amount`, `createdAt`, `code`, and `name`.
 - Existing D5 order APIs were left unchanged.
 - Sandbox limits in this session prevented direct host-side `curl` and MySQL socket checks from inside Codex, so ownership/API verification should be rerun from an unsandboxed shell if needed.
+
+## D7 note
+- Added a dedicated matching stack under `apps/stock-web-backend/src/main/java/ai/openclaw/stockweb/matching` plus `MatchingController`.
+- Matching logic:
+  - scans only the authenticated user's open `NEW` / `PARTIAL` orders
+  - resolves price from the latest same-day `minute_prices.close`, then falls back to the latest `daily_prices.close`
+  - respects limit-price constraints for `LIMIT` orders
+  - fills only the remaining quantity for `PARTIAL` orders, then advances the order to `FILLED`
+  - inserts a `trades` row, updates `orders`, updates `accounts.cash_balance`, and updates or deletes `positions`
+  - runs one order per transaction via `REQUIRES_NEW`
+- Added persisted `matching_runs` so `/api/matching/last` survives restarts.
+- Frontend now exposes `/matching` with `执行撮合`, immediate summary, and last-run summary.
+- Backend jar was rebuilt on 2026-03-24 and the systemd-managed Java process was bounced; systemd respawned it on the rebuilt jar.
+- Frontend `npm run build` succeeded, but copying the build into `/home/openclaw/.openclaw/workspace/reports` remained blocked by sandbox filesystem permissions in this session.
 
 ## Minute-Bar Issue Note
 - Symptom: some symbol detail pages return `intraday: []` while daily prices, fundamentals, technicals, and candidates are present.

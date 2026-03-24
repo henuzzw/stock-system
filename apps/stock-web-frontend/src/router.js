@@ -7,6 +7,7 @@ import Login from './views/Login.vue'
 import Account from './views/Account.vue'
 import Orders from './views/Orders.vue'
 import Trades from './views/Trades.vue'
+import Matching from './views/Matching.vue'
 import SymbolDetail from './views/SymbolDetail.vue'
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
   { path: '/account', name: 'account', component: Account },
   { path: '/orders', name: 'orders', component: Orders },
   { path: '/trades', name: 'trades', component: Trades },
+  { path: '/matching', name: 'matching', component: Matching },
   { path: '/symbol/:code', name: 'symbol', component: SymbolDetail, props: true }
 ]
 

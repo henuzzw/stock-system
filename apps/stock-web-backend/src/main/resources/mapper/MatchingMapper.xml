@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ai.openclaw.stockweb.mapper.MatchingMapper">
+
+    <select id="findOpenOrdersByUserId" resultType="ai.openclaw.stockweb.matching.MatchableOrderView">
+        SELECT o.id,
+               o.user_id AS userId,
+               o.symbol_id AS symbolId,
+               o.side,
+               o.order_type AS orderType,
+               o.limit_price AS price,
+               o.requested_quantity AS quantity,
+               o.filled_quantity AS filledQuantity,
+               o.status,
+               o.created_at AS createdAt,
+               o.updated_at AS updatedAt
+        FROM orders o
+        WHERE o.user_id = #{userId}
+          AND o.status IN ('NEW', 'PARTIAL')
+        ORDER BY o.created_at ASC, o.id ASC
+    </select>
+
+    <select id="lockOrderByIdAndUserId" resultType="ai.openclaw.stockweb.matching.MatchableOrderView">
+        SELECT o.id,
+               o.user_id AS userId,
+               o.symbol_id AS symbolId,
+               o.side,
+               o.order_type AS orderType,
+               o.limit_price AS price,
+               o.requested_quantity AS quantity,
+               o.filled_quantity AS filledQuantity,
+               o.status,
+               o.created_at AS createdAt,
+               o.updated_at AS updatedAt
+        FROM orders o
+        WHERE o.id = #{orderId}
+          AND o.user_id = #{userId}
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <select id="lockAccountByUserId" resultType="ai.openclaw.stockweb.account.AccountView">
+        SELECT id,
+               user_id AS userId,
+               initial_cash AS initialCash,
+               cash_balance AS cashBalance,
+               created_at AS createdAt
+        FROM accounts
+        WHERE user_id = #{userId}
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <select id="lockPositionByUserIdAndSymbolId" resultType="ai.openclaw.stockweb.account.PositionView">
+        SELECT id,
+               user_id AS userId,
+               symbol_id AS symbolId,
+               quantity,
+               available_quantity AS availableQuantity,
+               avg_cost AS avgCost,
+               created_at AS createdAt,
+               updated_at AS updatedAt
+        FROM positions
+        WHERE user_id = #{userId}
+          AND symbol_id = #{symbolId}
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <select id="findLatestMinutePrice" resultType="ai.openclaw.stockweb.matching.MatchPriceView">
+        SELECT close AS price,
+               ts AS matchedAt,
+               'MINUTE' AS source
+        FROM minute_prices
+        WHERE symbol_id = #{symbolId}
+          AND DATE(ts) = #{tradeDate}
+          AND ts &lt;= #{asOf}
+          AND close IS NOT NULL
+        ORDER BY ts DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestDailyPrice" resultType="ai.openclaw.stockweb.matching.MatchPriceView">
+        SELECT close AS price,
+               CAST(CONCAT(trade_date, ' 00:00:00') AS DATETIME) AS matchedAt,
+               'DAILY' AS source
+        FROM daily_prices
+        WHERE symbol_id = #{symbolId}
+          AND close IS NOT NULL
+        ORDER BY trade_date DESC
+        LIMIT 1
+    </select>
+
+    <update id="updateOrderAsFilled">
+        UPDATE orders
+        SET filled_quantity = #{filledQuantity},
+            avg_fill_price = #{avgFillPrice},
+            status = 'FILLED',
+            updated_at = #{updatedAt}
+        WHERE id = #{orderId}
+    </update>
+
+    <insert id="insertTrade" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO trades (user_id, order_id, symbol_id, side, quantity, price, amount, fee, executed_at, created_at)
+        VALUES (#{userId}, #{orderId}, #{symbolId}, #{side}, #{quantity}, #{price}, #{amount}, 0, #{createdAt}, #{createdAt})
+    </insert>
+
+    <update id="updateAccountCashBalance">
+        UPDATE accounts
+        SET cash_balance = cash_balance + #{delta}
+        WHERE user_id = #{userId}
+    </update>
+
+    <insert id="insertPosition" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO positions (user_id, symbol_id, quantity, available_quantity, avg_cost, created_at, updated_at)
+        VALUES (#{userId}, #{symbolId}, #{quantity}, #{availableQuantity}, #{avgCost}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="updatePosition">
+        UPDATE positions
+        SET quantity = #{quantity},
+            available_quantity = #{availableQuantity},
+            avg_cost = #{avgCost},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deletePositionById">
+        DELETE FROM positions
+        WHERE id = #{id}
+    </delete>
+
+    <insert id="insertMatchingRun" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO matching_runs (user_id, scanned_count, filled_count, skipped_count, total_amount, created_at)
+        VALUES (#{userId}, #{scanned}, #{filled}, #{skipped}, #{totalAmount}, #{createdAt})
+    </insert>
+
+    <select id="findLatestMatchingRunByUserId" resultType="ai.openclaw.stockweb.matching.MatchingRunView">
+        SELECT id,
+               user_id AS userId,
+               scanned_count AS scanned,
+               filled_count AS filled,
+               skipped_count AS skipped,
+               total_amount AS totalAmount,
+               created_at AS createdAt
+        FROM matching_runs
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

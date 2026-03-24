@@ -36,7 +36,7 @@
 - D4 Positions (partial buys/sells, cost basis, PnL) ✅
 - D5 Orders (market/limit; state machine) 🟡 schema + query API skeleton landed
 - D6 Trades (fills; link to orders; audit) ✅ protected `/api/trades` + `/api/trades/{id}` landed; ownership enforced in query layer
-- D7 Matching engine uses minute bars (buy side: nearest 10:10 window, sell side pending) 🟡
+- D7 Matching engine uses local minute/daily prices ✅ manual `/api/matching/run` + `/api/matching/last`; per-order atomic fills for `NEW`/`PARTIAL`; BUY checks cash and SELL checks available position
 - D8 Fees model (optional) ❌
 - D9 Equity/PnL curve stats ❌
 - D10 Strategy run logs + daily plans (Top3 automation) 🟡 schema + query API skeleton landed
@@ -47,7 +47,7 @@
 - E3 Symbol detail (close + SMA20/60 + fundamentals + candidate history) ✅
 - E4 Symbols full search ✅
 - E5 Register/Login pages ❌
-- E6 Account page (cash/positions/orders/trades/equity) ❌ standalone `/trades` page landed; consolidated account workspace still incomplete
+- E6 Account page (cash/positions/orders/trades/equity) ❌ standalone `/trades` + `/matching` pages landed; consolidated account workspace still incomplete
 - E7 Strategy page (daily plan, fills, sell triggers) ❌
 - E8 Export CSV/Excel (optional) ❌
 

@@ -64,3 +64,15 @@ CREATE TABLE IF NOT EXISTS trades (
     KEY idx_trades_user_created_at (user_id, created_at),
     KEY idx_trades_order_id (order_id)
 );
+
+CREATE TABLE IF NOT EXISTS matching_runs (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    scanned_count INT NOT NULL DEFAULT 0,
+    filled_count INT NOT NULL DEFAULT 0,
+    skipped_count INT NOT NULL DEFAULT 0,
+    total_amount DECIMAL(18, 4) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_matching_runs_user_created_at (user_id, created_at),
+    CONSTRAINT fk_matching_runs_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
