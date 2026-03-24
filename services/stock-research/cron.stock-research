@@ -1,4 +1,4 @@
 # Stock Research (A-share)
 # Daily close: refresh valuation/technical rankings and candidate pool at 15:30 Asia/Shanghai on weekdays
-30 15 * * 1-5 cd /home/openclaw/projects/stock-research && /home/openclaw/projects/stock-research/.venv/bin/stock-research run-all >> /tmp/stock-research-run-all.log 2>&1
-35 15 * * 1-5 cd /home/openclaw/projects/stock-research && /home/openclaw/projects/stock-research/.venv/bin/stock-research run-candidates >> /tmp/stock-research-candidates.log 2>&1
+30 15 * * 1-5 cd /home/openclaw/projects/stock-system/services/stock-research && /home/openclaw/projects/stock-system/services/stock-research/.venv/bin/stock-research run-all >> /tmp/stock-research-run-all.log 2>&1
+35 15 * * 1-5 cd /home/openclaw/projects/stock-system/services/stock-research && /home/openclaw/projects/stock-system/services/stock-research/.venv/bin/stock-research run-candidates >> /tmp/stock-research-candidates.log 2>&1

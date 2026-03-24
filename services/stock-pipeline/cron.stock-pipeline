@@ -2,7 +2,7 @@
 # Use flock to prevent overlapping runs from exhausting MySQL connections.
 
 # Intraday refresh every 15 minutes on weekdays
-*/15 * * * 1-5 cd /home/openclaw/projects/stock-pipeline && flock -n /tmp/stock-pipeline-intraday.lock /home/openclaw/projects/stock-pipeline/.venv/bin/stock-pipeline intraday >> /tmp/stock-pipeline-intraday.log 2>&1
+*/15 * * * 1-5 cd /home/openclaw/projects/stock-system/services/stock-pipeline && flock -n /tmp/stock-pipeline-intraday.lock /home/openclaw/projects/stock-system/services/stock-pipeline/.venv/bin/stock-pipeline intraday >> /tmp/stock-pipeline-intraday.log 2>&1
 
 # Daily close recap at 15:20 Asia/Shanghai on weekdays
-20 15 * * 1-5 cd /home/openclaw/projects/stock-pipeline && flock -n /tmp/stock-pipeline-close.lock /home/openclaw/projects/stock-pipeline/.venv/bin/stock-pipeline daily-close >> /tmp/stock-pipeline-close.log 2>&1
+20 15 * * 1-5 cd /home/openclaw/projects/stock-system/services/stock-pipeline && flock -n /tmp/stock-pipeline-close.lock /home/openclaw/projects/stock-system/services/stock-pipeline/.venv/bin/stock-pipeline daily-close >> /tmp/stock-pipeline-close.log 2>&1

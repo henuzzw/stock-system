@@ -1,0 +1,12 @@
+[Unit]
+Description=Stock Research Catch-Up Runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/openclaw/projects/stock-system
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/openclaw/projects/stock-system/services/stock-research/.venv/bin/python /home/openclaw/projects/stock-system/services/stock-research/scripts/run_if_needed.py
+StandardOutput=append:/tmp/stock-research-timer.log
+StandardError=append:/tmp/stock-research-timer.log

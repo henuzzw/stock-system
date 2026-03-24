@@ -1,21 +1,29 @@
 # HANDOFF — Stock Quant System
 
-Last updated: 2026-03-10 (Asia/Shanghai)
+Last updated: 2026-03-20 (Asia/Shanghai)
 
 ## What is running
 - Nginx serves SPA on port 30000, proxies `/api/` to Spring Boot.
   - Nginx conf: `/etc/nginx/conf.d/market_reports.conf`
-  - Frontend build output deployed to: `/home/openclaw/.openclaw/workspace/reports`
+  - Frontend build output deployed to: `/var/www/stock-web`
 - Spring Boot backend (port 8088) is managed by systemd:
   - Service: `stock-web-backend.service` (enabled)
   - Health: `curl http://127.0.0.1:30000/api/health`
+- Stock research catch-up is managed by user-level systemd for `openclaw`:
+  - Timer: `stock-research-catchup.timer` (enabled)
+  - Service: `stock-research-catchup.service`
+  - Unit dir: `/home/openclaw/.config/systemd/user`
+  - Log: `/tmp/stock-research-timer.log`
+  - Behavior: every 30 minutes after boot, plus weekday 15:40 schedule; script no-ops unless research tables lag the latest `daily_prices.trade_date`
 
 ## Key projects
-- Data pipeline: `/home/openclaw/projects/stock-pipeline`
+- Data pipeline: `/home/openclaw/projects/stock-system/services/stock-pipeline`
   - MySQL: 127.0.0.1:3310 db `stock_pipeline` user/pass `flowing`
   - Added minute bars table `minute_prices` and CLI command:
     - `stock-pipeline minute --codes 601985 --date 2026-03-10`
-- Research: `/home/openclaw/projects/stock-research`
+  - `stock-pipeline intraday` refreshes daily data and snapshots only; it does not write `minute_prices`
+  - Dedicated candidate minute-bar collection now runs via `stock-pipeline minute-candidates`
+- Research: `/home/openclaw/projects/stock-system/services/stock-research`
   - Tables: `technical_low_daily`, `valuation_low_daily`, `candidates_daily (rank_left/rank_right)`, `scores_daily (trend_ok + total_score)`
   - Trend gate: 2-of-3 (close>SMA20, SMA20 non-down, no_new_low_10)
 - Web backend: `/home/openclaw/projects/stock-system/apps/stock-web-backend`
@@ -39,14 +47,25 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 
 ## Immediate next steps (not done yet)
 1) Paper-trading/account system (users/JWT/accounts/orders/trades/positions/equity curves).
-2) Automated minute-bar collection (cron) for candidate symbols.
+2) Improve minute-bar reliability for Eastmoney provider failures on batch runs.
 3) Strategy executor + daily plan/trade logs using `strategy.yml`.
 4) Frontend pages: register/login, account dashboard, strategy dashboard.
 
+## Minute-Bar Issue Note
+- Symptom: some symbol detail pages return `intraday: []` while daily prices, fundamentals, technicals, and candidates are present.
+- Root cause: `stock-pipeline intraday` never writes `minute_prices`; detail-page intraday data is read from `minute_prices` only.
+- Current operational handling:
+  - One-off backfill: `stock-pipeline minute --codes <CODE> --date <YYYY-MM-DD>`
+  - Scheduled collection: `stock-pipeline minute-candidates`
+  - Minute-bar jobs should clear proxy env vars before calling Eastmoney endpoints.
+- Current limitation: Eastmoney minute endpoints still fail intermittently with DNS / `RemoteDisconnected` / connection errors for some symbols. Batch collection now logs per-symbol failures and continues, but the upstream provider is not fully stable.
+- Verified example: `601868` was backfilled for `2026-03-19` with 241 rows covering `09:30` to `15:00`.
+
 ## After reboot — quick verification
 1) `systemctl status nginx` and `systemctl status stock-web-backend`
-2) `curl http://127.0.0.1:30000/api/health`
-3) Open http://180.76.138.67:30000/
+2) `XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user status stock-research-catchup.timer`
+3) `curl http://127.0.0.1:30000/api/health`
+4) Open http://180.76.138.67:30000/
 
 ## Sudo helper
 - Use `/home/openclaw/secure_sudo_helper.sh run <cmd>` for privileged ops.
