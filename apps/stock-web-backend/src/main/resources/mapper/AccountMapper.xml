@@ -35,8 +35,14 @@
     </select>
 
     <select id="findOrdersByUserId" resultType="ai.openclaw.stockweb.account.OrderView">
-        SELECT o.id, o.user_id, o.strategy_run_id, o.symbol_id, o.order_type,
-               o.side, o.quantity, o.price, o.status, o.created_at,
+        SELECT o.id, o.user_id, o.symbol_id, o.side,
+               o.order_type,
+               o.limit_price AS price,
+               o.requested_quantity AS quantity,
+               o.filled_quantity,
+               o.status,
+               o.created_at,
+               o.updated_at,
                s.code, s.name
         FROM orders o
         JOIN symbols s ON s.id = o.symbol_id
@@ -109,8 +115,8 @@
     </insert>
 
     <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (user_id, strategy_run_id, symbol_id, order_type, side, quantity, price, status, created_at)
-        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{orderType}, #{side}, #{quantity}, #{price}, #{status}, #{createdAt})
+        INSERT INTO orders (user_id, symbol_id, side, order_type, status, requested_quantity, filled_quantity, limit_price, source, note, created_at, updated_at)
+        VALUES (#{userId}, #{symbolId}, #{side}, #{orderType}, #{status}, #{quantity}, #{filledQuantity}, #{price}, 'strategy', NULL, #{createdAt}, #{updatedAt})
     </insert>
 
     <insert id="insertTrade" useGeneratedKeys="true" keyProperty="id">

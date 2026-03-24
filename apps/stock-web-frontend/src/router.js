@@ -4,6 +4,8 @@ import Symbols from './views/Symbols.vue'
 import Status from './views/Status.vue'
 import Register from './views/Register.vue'
 import Login from './views/Login.vue'
+import Account from './views/Account.vue'
+import Orders from './views/Orders.vue'
 import SymbolDetail from './views/SymbolDetail.vue'
 
 const routes = [
@@ -12,6 +14,8 @@ const routes = [
   { path: '/status', name: 'status', component: Status },
   { path: '/register', name: 'register', component: Register },
   { path: '/login', name: 'login', component: Login },
+  { path: '/account', name: 'account', component: Account },
+  { path: '/orders', name: 'orders', component: Orders },
   { path: '/symbol/:code', name: 'symbol', component: SymbolDetail, props: true }
 ]
 

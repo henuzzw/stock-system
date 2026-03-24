@@ -8,6 +8,8 @@
       <div style="margin-left:auto; display:flex; gap:10px; flex-wrap: wrap; justify-content: flex-end; align-items:center;">
         <el-button type="primary" plain @click="$router.push('/')">Dashboard</el-button>
         <el-button type="primary" plain @click="$router.push('/symbols')">全量股票</el-button>
+        <el-button type="primary" plain @click="$router.push('/account')">账户</el-button>
+        <el-button type="primary" plain @click="$router.push('/orders')">订单</el-button>
         <el-button type="primary" plain @click="$router.push('/status')">状态页</el-button>
         <el-button type="success" plain @click="$router.push('/register')">注册</el-button>
         <el-button type="warning" plain @click="$router.push('/login')">登录</el-button>

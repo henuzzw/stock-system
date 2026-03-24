@@ -27,17 +27,11 @@
     <el-table-column prop="in_valuation_top20" label="估值Top" width="80" />
     <el-table-column prop="rank_left" label="Left Rank" width="90" />
     <el-table-column prop="rank_right" label="Right Rank" width="90" />
-    <el-table-column label="K线图" width="110" fixed="right">
-      <template #default="{ row }">
-        <el-button type="primary" link @click.stop="$emit('view-chart', row)">查看</el-button>
-      </template>
-    </el-table-column>
   </el-table>
 </template>
 
 <script setup>
 import ScoreBar from './ScoreBar.vue'
 
-defineEmits(['row-click', 'view-chart'])
 defineProps({ rows: { type: Array, default: () => [] } })
 </script>

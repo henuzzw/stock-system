@@ -78,11 +78,21 @@ public class AccountRepository {
     @Transactional
     public long createOrder(long userId, long strategyRunId, long symbolId, String orderType, String side,
                             BigDecimal quantity, BigDecimal price, String status) {
-        OrderView order = new OrderView(
-                null, userId, strategyRunId, symbolId, orderType, side, quantity, price, status, LocalDateTime.now()
-        );
+        LocalDateTime now = LocalDateTime.now();
+        OrderView order = new OrderView();
+        order.setUserId(userId);
+        order.setStrategyRunId(strategyRunId <= 0 ? null : strategyRunId);
+        order.setSymbolId(symbolId);
+        order.setSide(side);
+        order.setOrderType(orderType);
+        order.setPrice(price);
+        order.setQuantity(quantity);
+        order.setFilledQuantity("FILLED".equalsIgnoreCase(status) ? quantity : BigDecimal.ZERO);
+        order.setStatus(status);
+        order.setCreatedAt(now);
+        order.setUpdatedAt(now);
         mapper.insertOrder(order);
-        return order.id();
+        return order.getId();
     }
 
     @Transactional

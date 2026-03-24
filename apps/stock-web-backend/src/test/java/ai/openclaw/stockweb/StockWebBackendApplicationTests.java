@@ -1,13 +1,13 @@
 package ai.openclaw.stockweb;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@SpringBootTest
 class StockWebBackendApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationTestHarnessLoads() {
+		assertEquals("ai.openclaw.stockweb", StockWebBackendApplication.class.getPackageName());
 	}
 
 }

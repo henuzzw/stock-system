@@ -111,7 +111,7 @@ public class StrategyExecutionRepository {
     }
 
     @Transactional
-    public long createOrderWithInfo(long userId, long symbolId, String orderType, String side, String status,
+    public long createOrderWithInfo(long userId, long symbolId, String side, String orderType, String status,
                                     BigDecimal quantity, BigDecimal price, String execType, String execInfo) {
         return mapper.insertOrder(userId, 0L, symbolId, orderType, side, quantity, price, status, LocalDateTime.now());
     }

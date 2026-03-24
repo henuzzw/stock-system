@@ -21,7 +21,6 @@ export const getCandidates = (date, side, opts = {}) =>
   })
 
 export const getSymbols = (q, limit = 200) => api.get('/symbols', { params: { q, limit } })
-export const addSymbol = (payload) => api.post('/symbols', payload)
 export const getSymbolDetail = (code, days = 180) => api.get(`/symbol/${code}`, { params: { days } })
 
 export default api

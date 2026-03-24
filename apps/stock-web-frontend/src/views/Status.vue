@@ -5,7 +5,7 @@
         <el-card>
           <div class="label">{{ card.label }}</div>
           <div class="value">{{ card.value }}</div>
-          <div class="sub">最新时间：{{ card.latest || '-' }}</div>
+          <div class="sub">latest: {{ card.latest || '-' }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -31,12 +31,12 @@ const load = async () => {
   const res = await api.get('/status')
   const d = res.data
   cards.value = [
-    { key: 'symbols', label: '激活股票数', value: d.symbols?.cnt ?? 0, latest: '' },
-    { key: 'technical', label: '技术榜单', value: d.technical?.cnt ?? 0, latest: d.technical?.latest },
-    { key: 'valuation', label: '估值榜单', value: d.valuation?.cnt ?? 0, latest: d.valuation?.latest },
-    { key: 'candidates', label: '候选池记录', value: d.candidates?.cnt ?? 0, latest: d.candidates?.latest },
-    { key: 'scores', label: '评分记录', value: d.scores?.cnt ?? 0, latest: d.scores?.latest },
-    { key: 'minute_prices', label: '分钟线记录', value: d.minute_prices?.cnt ?? 0, latest: d.minute_prices?.latest },
+    { key: 'symbols', label: 'Active Symbols', value: d.symbols?.cnt ?? 0, latest: '' },
+    { key: 'technical', label: 'Technical Rank', value: d.technical?.cnt ?? 0, latest: d.technical?.latest },
+    { key: 'valuation', label: 'Valuation Rank', value: d.valuation?.cnt ?? 0, latest: d.valuation?.latest },
+    { key: 'candidates', label: 'Candidates', value: d.candidates?.cnt ?? 0, latest: d.candidates?.latest },
+    { key: 'scores', label: 'Scores', value: d.scores?.cnt ?? 0, latest: d.scores?.latest },
+    { key: 'minute_prices', label: 'Minute Prices', value: d.minute_prices?.cnt ?? 0, latest: d.minute_prices?.latest },
   ]
 }
 

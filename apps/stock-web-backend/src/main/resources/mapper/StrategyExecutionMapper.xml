@@ -118,8 +118,21 @@
     </insert>
 
     <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (user_id, strategy_run_id, symbol_id, order_type, side, quantity, price, status, created_at)
-        VALUES (#{userId}, #{strategyRunId}, #{symbolId}, #{orderType}, #{side}, #{quantity}, #{price}, #{status}, #{createdAt})
+        INSERT INTO orders (user_id, symbol_id, side, order_type, status, requested_quantity, filled_quantity, limit_price, source, note, created_at, updated_at)
+        VALUES (
+            #{userId},
+            #{symbolId},
+            #{side},
+            #{orderType},
+            #{status},
+            #{quantity},
+            CASE WHEN #{status} = 'FILLED' THEN #{quantity} ELSE 0 END,
+            #{price},
+            'strategy',
+            NULL,
+            #{createdAt},
+            #{createdAt}
+        )
     </insert>
 
     <insert id="insertTrade" useGeneratedKeys="true" keyProperty="id">
