@@ -6,6 +6,9 @@
         <h2>{{ symbol?.name || '--' }}</h2>
         <el-tag type="info" effect="plain">{{ symbol?.code || '--' }}</el-tag>
       </div>
+      <div class="head-actions">
+        <el-button type="danger" plain @click="openBuyDialog">模拟买入</el-button>
+      </div>
     </div>
 
     <el-row :gutter="16" class="kpi-row">
@@ -85,14 +88,36 @@
       </el-table>
       <el-empty v-else description="暂无候选池数据" />
     </el-card>
+
+    <el-dialog v-model="buyDialogVisible" title="模拟买入下单" width="420px">
+      <el-form label-width="90px">
+        <el-form-item label="股票">
+          <span>{{ symbol?.name }} ({{ symbol?.code }})</span>
+        </el-form-item>
+        <el-form-item label="价格">
+          <el-input-number v-model="buyForm.price" :precision="2" :min="0.01" :step="0.01" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="数量(手)">
+          <el-input-number v-model="buyForm.hands" :precision="0" :min="1" :step="1" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="下单股数">
+          <span>{{ buyShares }} 股</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="buyDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="placing" @click="submitBuyOrder">确认买入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getSymbolDetail } from '../api'
+import api, { getSymbolDetail } from '../api'
 
 const router = useRouter()
 const route = useRoute()
@@ -111,6 +136,11 @@ let intradayChart
 const latestClose = computed(() => prices.value?.[0]?.close)
 const latestPe = computed(() => fundamentals.value?.[0]?.pe_ttm)
 const latestPb = computed(() => fundamentals.value?.[0]?.pb)
+
+const buyDialogVisible = ref(false)
+const placing = ref(false)
+const buyForm = ref({ price: 0, hands: 1 })
+const buyShares = computed(() => Number(buyForm.value.hands || 0) * 100)
 
 const load = async () => {
   const code = route.params.code
@@ -182,6 +212,50 @@ const fmtNumber = (v) => (v == null ? '--' : Number(v).toLocaleString('zh-CN', {
 const fmtMoney = (v) => (v == null ? '--' : Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 const fmtPercent = (v) => (v == null ? '--' : `${Number(v).toFixed(2)}%`)
 
+const getAutoPrice = () => {
+  const lastIntraday = intraday.value?.[intraday.value.length - 1]?.close
+  const p = Number(lastIntraday ?? latestClose.value ?? 0)
+  return p > 0 ? Number(p.toFixed(2)) : 0
+}
+
+const openBuyDialog = () => {
+  buyForm.value = {
+    price: getAutoPrice(),
+    hands: 1
+  }
+  buyDialogVisible.value = true
+}
+
+const submitBuyOrder = async () => {
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    ElMessage.warning('请先登录再下单')
+    router.push('/login')
+    return
+  }
+  if (!symbol.value?.code) return
+
+  placing.value = true
+  try {
+    await api.post('/orders/place', {
+      symbol: symbol.value.code,
+      side: 'BUY',
+      orderType: 'LIMIT',
+      price: Number(buyForm.value.price || 0),
+      quantity: buyShares.value
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    buyDialogVisible.value = false
+    ElMessage.success(`下单成功：${symbol.value.code} 买入 ${buyShares.value} 股`)
+    router.push('/orders')
+  } catch (err) {
+    ElMessage.error(err?.response?.data?.message || '下单失败')
+  } finally {
+    placing.value = false
+  }
+}
+
 const goBack = () => router.push('/')
 
 onMounted(load)
@@ -199,6 +273,10 @@ watch(() => route.params.code, load)
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.head-actions {
+  margin-left: auto;
 }
 
 .title-wrap {
